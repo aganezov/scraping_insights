@@ -1,0 +1,2131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Insight Mine – Interactive Mock v15</title>
+<style>
+:root{
+  --bg:#0b0d10; --panel:#0f141b; --muted:#93a4b8; --text:#e5e7eb;
+  --brand:#60a5fa; --ok:#22c55e; --border:#253244; --chip:#131a23;
+  --hover:#131a22; --accent:#93c5fd; --warn:#f59e0b; --err:#ef4444;
+}
+[data-theme="light"]{
+  --bg:#f8fafc; --panel:#ffffff; --muted:#64748b; --text:#1e293b;
+  --brand:#2563eb; --ok:#16a34a; --border:#cbd5e1; --chip:#e2e8f0;
+  --hover:#f1f5f9; --accent:#3b82f6; --warn:#d97706; --err:#dc2626;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;transition:background .2s,color .2s}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+.container{max-width:1250px;margin:0 auto;padding:18px 14px 44px}
+.header{display:flex;gap:10px;align-items:center;margin-bottom:8px}
+.h1{font-weight:800;font-size:20px}
+.badge{background:var(--chip);border:1px solid var(--border);padding:3px 8px;border-radius:999px;color:var(--muted);font-size:11px}
+.tabs{display:flex;gap:6px;margin:8px 0 10px}
+.tab{padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--chip);color:var(--muted);cursor:pointer;font-size:13px;transition:background .15s,color .15s}
+.tab.active{background:var(--panel);color:var(--text);border-color:var(--accent)}
+.panel{border:1px solid var(--border);border-radius:12px;background:var(--panel);padding:12px}
+.grid{display:grid;gap:14px}
+.grid.cols-2{grid-template-columns:1.25fr 1fr}
+.grid.cols-3{grid-template-columns:repeat(3,1fr)}
+.label{font-size:12px;color:var(--muted);margin-bottom:4px}
+.input, select, textarea{width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--border);
+  background:var(--chip);color:var(--text);outline:none;font-size:13px;transition:background .15s}
+textarea{min-height:120px}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;border:1px solid var(--border);
+  background:var(--chip);color:var(--text);cursor:pointer;font-size:13px;transition:background .15s}
+.btn[disabled]{opacity:.55;cursor:not-allowed}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn.primary:hover{opacity:.9}
+.btn.small{padding:5px 8px;font-size:12px}
+.switch{display:inline-flex;align-items:center;gap:8px}
+.switch input{accent-color:var(--brand);transform:scale(1.05)}
+hr.sep{border:none;border-top:1px solid var(--border);margin:10px 0}
+.progress{height:10px;background:var(--chip);border:1px solid var(--border);border-radius:999px;overflow:hidden}
+.progress>div{height:100%;background:linear-gradient(90deg,#60a5fa,#34d399);width:0%}
+.spinner{display:inline-block;width:12px;height:12px;border:2px solid var(--muted);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;vertical-align:middle;margin-left:6px}
+.spinner.hidden{display:none}
+.spinner-check{display:none;margin-left:6px;color:var(--ok);font-size:12px;vertical-align:middle}
+.spinner-check.show{display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+.log{background:var(--chip);border:1px solid var(--border);border-radius:8px;height:220px;overflow:auto;padding:10px;
+  font-family: ui-monospace, Menlo, Consolas; font-size:12px;white-space:pre-wrap;resize:vertical}
+.status-chip{padding:2px 8px;border-radius:999px;border:1px solid var(--border);background:var(--chip);font-size:12px;color:var(--muted)}
+.status-ok{color:var(--ok);border-color:var(--ok)}
+.status-off{color:var(--err);border-color:var(--err)}
+.table-wrap{border:1px solid var(--border);border-radius:12px;overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px;table-layout:auto}
+thead{background:var(--chip)}
+th,td{border-bottom:1px solid var(--border);padding:4px 5px;vertical-align:top;text-align:left}
+th{white-space:nowrap}
+/* Numeric columns - compact with tabular numbers */
+td:nth-child(n+6):nth-child(-n+9){font-variant-numeric:tabular-nums;white-space:nowrap}
+/* Date column - compact */
+td:nth-child(9){font-size:11px}
+/* Link column - right aligned */
+td:last-child{text-align:right;white-space:nowrap}
+tbody tr:hover{background:var(--hover)}
+th.sortable{cursor:pointer;user-select:none}
+th.sortable .label-wrap{display:flex;align-items:center;gap:6px}
+th.sortable .sort-ind{font-size:11px;color:var(--muted)}
+.filter-row input{width:100%;padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:var(--chip);color:var(--text)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.row.nowrap{flex-wrap:nowrap}
+.right{margin-left:auto}
+.small{font-size:12px;color:var(--muted)}
+.card{border:1px solid var(--border);border-radius:10px;padding:10px;background:var(--panel);-webkit-user-select:text;user-select:text}
+.tag{background:var(--chip);border:1px solid var(--border);padding:2px 6px;border-radius:999px;font-size:11px;color:var(--muted)}
+.accordion{border:1px solid var(--border);border-radius:8px;margin:6px 0;background:var(--chip)}
+.acc-h{padding:8px 10px;display:flex;justify-content:space-between;cursor:pointer}
+.acc-c{display:none;border-top:1px solid var(--border);padding:8px;-webkit-user-select:text;user-select:text}
+/* Compact rows - responsive widths */
+.compact-title{max-width:min(320px, 25vw);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.compact-author{max-width:min(130px, 10vw);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.compact-ctx{max-width:min(130px, 10vw);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.details-row{display:none;background:var(--chip)}
+.details-cell{padding:10px 12px;-webkit-user-select:text;user-select:text}
+.pagination{display:flex;gap:6px;align-items:center;flex-wrap:nowrap;white-space:nowrap}
+.select{padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--chip);color:var(--text)}
+.select.compact{max-width:150px}
+.hidden{display:none}
+.more{margin-left:auto;position:relative}
+.more-btn{border:1px solid var(--accent);background:var(--brand);border-radius:8px;padding:6px 10px;cursor:pointer;color:#fff;font-size:13px;font-weight:500;transition:border-color .15s,box-shadow .15s,opacity .15s}
+.more-btn:hover{border-color:var(--brand);box-shadow:0 0 8px rgba(96,165,250,.25)}
+.more-menu{position:absolute;right:0;top:36px;background:var(--panel);border:1px solid var(--accent);border-radius:10px;padding:8px;display:none;min-width:200px;box-shadow:0 4px 16px rgba(0,0,0,.4)}
+.more-menu a{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:6px;color:var(--text);font-size:13px;font-weight:500;transition:background .15s}
+.more-menu a:hover{background:var(--hover);text-decoration:none}
+/* Resizable/scrollable areas */
+.resizable{overflow:auto;resize:vertical;min-height:0;max-height:85vh;-webkit-user-select:text;user-select:text}
+.mono{font-family: ui-monospace, Menlo, Consolas; white-space:pre-wrap; font-size:14px; line-height:1.5; text-align:left; -webkit-user-select:text; user-select:text; cursor:text}
+.copy-wrap{position:relative}
+.copy-target{padding-right:32px}
+.copy-target.copy-bottom{padding-right:10px;padding-bottom:32px}
+.copy-target.copy-top-left{padding-left:40px;padding-top:4px}
+.copy-btn{position:absolute;top:6px;right:6px;border:1px solid var(--border);background:var(--panel);color:var(--muted);border-radius:6px;padding:4px 6px;font-size:12px;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.25);line-height:1;z-index:2}
+.copy-btn.bottom{top:auto;bottom:6px}
+.copy-btn.top-left{left:8px;right:auto;top:8px}
+.comment-cell .copy-btn{background:var(--panel);border-color:var(--accent);color:var(--text)}
+/* Comment cards in parent details: ensure min-height for copy button */
+.acc-c .card .copy-wrap{min-height:48px;padding-bottom:8px}
+.copy-btn:hover{background:var(--hover);color:var(--text)}
+.copy-btn:active{transform:translateY(1px)}
+.tr-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--muted);margin-left:6px;vertical-align:middle;opacity:0.5}
+.tr-dot.on{background:#4a4;opacity:1}
+.warn{color:var(--warn)}
+.err{color:var(--err)}
+/* Inline YouTube icon */
+.yt-icon{display:inline-flex;vertical-align:middle}
+.yt-icon svg{width:16px;height:12px}
+/* Results telemetry badges */
+.metrics{display:flex;gap:6px;flex-wrap:wrap}
+.metric{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border:1px solid var(--border);border-radius:999px;background:var(--chip);color:var(--accent);font-size:12px}
+.metric b{color:var(--text)}
+/* Segmented source selector */
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:999px;overflow:hidden;background:var(--chip)}
+.seg button{border:none;background:transparent;color:var(--muted);padding:3px 8px;cursor:pointer;font-size:12px;display:inline-flex;align-items:center;gap:6px}
+.seg button.active{background:var(--hover);color:var(--text)}
+.seg .yt-icon svg{width:14px;height:10px}
+/* Results head */
+.results-head{display:grid;grid-template-columns:minmax(320px,560px) 1fr;gap:8px;align-items:start}
+.run-chooser{position:relative;max-width:560px}
+.run-btn{display:flex;justify-content:space-between;align-items:center;padding:7px 10px}
+.run-menu{position:absolute;z-index:20;left:0;right:0;margin-top:6px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:6px;display:none;max-height:320px;overflow:auto}
+.run-item{padding:6px;border-radius:6px;cursor:pointer}
+.run-item:hover{background:var(--hover)}
+.view-seg{margin-top:6px}
+/* Toast */
+.toast{position:fixed;right:16px;bottom:16px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text);opacity:0;transform:translateY(8px);transition:.2s;box-shadow:0 4px 12px rgba(0,0,0,.2)}
+.toast.show{opacity:1;transform:translateY(0)}
+/* Collect Items chips */
+.item-chips{display:flex;gap:8px;flex-wrap:nowrap;white-space:nowrap;overflow-x:auto}
+.item-chip{display:inline-flex;align-items:baseline;gap:4px;border:1px solid var(--border);background:var(--chip);border-radius:10px;padding:4px 6px;white-space:nowrap}
+.item-chip .n{font-size:16px;color:var(--text);min-width:2.4ch;text-align:right}
+/* Modal styles */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55)}
+.modal-content{margin:36px auto;max-width:900px;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px;box-shadow:0 8px 32px rgba(0,0,0,.3)}
+/* Theme toggle */
+.theme-toggle{background:var(--chip);border:1px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:border-color .15s,transform .15s}
+.theme-toggle:hover{border-color:var(--accent);transform:scale(1.05)}
+.theme-icon{line-height:1}
+/* Subreddit picker */
+.subreddit-picker{display:flex;flex-direction:column;gap:8px}
+.subreddit-chips{display:flex;flex-wrap:wrap;gap:6px;min-height:24px}
+.subreddit-chip{display:inline-flex;align-items:center;gap:4px;background:var(--brand);color:#fff;padding:4px 8px;border-radius:999px;font-size:12px;font-weight:500}
+.subreddit-chip .remove-chip{background:none;border:none;color:rgba(255,255,255,.7);cursor:pointer;font-size:14px;line-height:1;padding:0 2px;transition:color .15s}
+.subreddit-chip .remove-chip:hover{color:#fff}
+.subreddit-input-row{display:flex;gap:8px;margin-top:12px}
+.subreddit-modal-chips{display:flex;flex-wrap:wrap;gap:8px;min-height:40px;padding:10px;background:var(--chip);border:1px solid var(--border);border-radius:8px}
+/* Subreddit verification states */
+.subreddit-chip .verify-status{margin-left:2px;font-size:12px}
+.subreddit-chip.checking{opacity:.7}
+.subreddit-chip.checking .verify-status{animation:pulse 1s infinite}
+.subreddit-chip.valid{background:var(--ok)}
+.subreddit-chip.invalid{background:var(--err)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+/* Settings modal */
+.settings-file-row{margin-top:12px}
+.settings-file-path{background:var(--chip);padding:6px 10px;border-radius:6px;font-size:12px;color:var(--muted);max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block}
+/* Custom autocomplete dropdown */
+.ac-wrap{position:relative}
+.ac-dropdown{position:fixed;z-index:9999;width:max-content;max-width:400px;background:var(--panel);border:1px solid var(--border);border-radius:8px;max-height:240px;overflow-y:auto;display:none;box-shadow:0 4px 12px rgba(0,0,0,.3)}
+.ac-dropdown.show{display:block}
+.ac-item{padding:8px 12px;cursor:pointer;font-size:13px;color:var(--text);border-bottom:1px solid var(--border)}
+.ac-item:last-child{border-bottom:none}
+.ac-item:hover,.ac-item.selected{background:var(--hover);color:var(--accent)}
+.ac-empty{padding:6px 10px;font-size:12px;color:var(--muted);font-style:italic}
+</style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="h1">Insight Mine – Interactive Mock v15</div>
+      <span class="badge">Self‑contained HTML</span>
+      <span class="badge">No network calls</span>
+      <button class="theme-toggle" id="themeToggle" title="Toggle light/dark theme">
+        <span class="theme-icon" id="themeIcon">🌙</span>
+      </button>
+      <div class="more">
+        <button class="more-btn" id="moreBtn">☰ More</button>
+        <div class="more-menu" id="moreMenu">
+          <a href="#" id="openTelemetry">📊 Telemetry</a>
+          <a href="#" id="openSettings">⚙️ Settings</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="tabs" id="tabs">
+      <div class="tab active" data-tab="collect">Collect</div>
+      <div class="tab" data-tab="results">Results</div>
+    </div>
+
+    <!-- COLLECT -->
+    <div class="panel" data-page="collect">
+      <div class="grid cols-2" style="align-items:stretch">
+        <div style="display:flex;flex-direction:column">
+          <div class="row" style="justify-content:flex-start;gap:12px">
+            <label class="switch">
+              <input id="enableYoutube" type="checkbox" checked> <span>YouTube</span>
+            </label>
+            <label class="switch" title="Transcript fetching mode: off=skip, free=youtube-transcript-api only, any=free first then paid API">
+              <span>Transcripts:</span>
+              <select id="transcriptMode" class="input" style="width:auto;padding:4px 8px;font-size:13px">
+                <option value="off">Off</option>
+                <option value="free">Free only</option>
+                <option value="any">Any (free→paid)</option>
+              </select>
+            </label>
+            <label class="switch"><input id="enableReddit" type="checkbox" checked> <span>Reddit</span></label>
+          </div>
+          <hr class="sep"/>
+          <div class="grid cols-3">
+            <div>
+              <div class="label">Topic</div>
+              <input id="topic" class="input" placeholder="e.g., electric cars charging speed">
+            </div>
+            <div>
+              <div class="label">Since</div>
+              <input id="since" type="date" class="input">
+            </div>
+            <div>
+              <div class="label">Subreddits (optional)</div>
+              <div class="subreddit-picker">
+                <button class="btn" id="openSubredditPicker" type="button">+ Add subreddits</button>
+                <div class="subreddit-chips" id="subredditChips"></div>
+              </div>
+              <input type="hidden" id="subs">
+            </div>
+          </div>
+          <details style="margin-top:8px">
+            <summary><strong>Advanced overrides</strong> <span class="small">(defaults are pre‑set)</span></summary>
+
+            <div class="grid cols-3" style="margin-top:8px">
+              <div>
+                <div class="label">Language</div>
+                <select id="lang" class="input">
+                  <option value="en" selected>English (eng)</option>
+                  <option value="es">Spanish (es)</option>
+                  <option value="de">German (de)</option>
+                </select>
+              </div>
+              <div>
+                <div class="label">Reddit method</div>
+                <select id="redditMethod" class="input" disabled>
+                  <option value="scrape" selected>scrape (fixed)</option>
+                </select>
+              </div>
+              <div>
+                <div class="label">Dedupe</div>
+                <select id="dedupe" class="input">
+                  <option value="on" selected>on</option>
+                  <option value="off">off</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="grid cols-3" style="margin-top:8px">
+              <div>
+                <div class="label">Reddit: selection</div>
+                <select id="redditSelector" class="input">
+                  <option value="hot" selected>listing: hot</option>
+                  <option value="top">listing: top</option>
+                  <option value="new">listing: new</option>
+                  <option value="search">search (with query)</option>
+                </select>
+                <div class="small" style="margin-top:6px">
+                  <em>Search</em> is query‑based with its own sort/time. 
+                  <em>Hot/New/Top</em> select from subreddit listings.
+                </div>
+              </div>
+              <div id="redditQueryWrap">
+                <div class="label">Reddit: search query</div>
+                <input id="redditQuery" class="input" placeholder="e.g., fast charging OR slow charging">
+              </div>
+              <div id="redditSearchOpts" class="hidden">
+                <div class="label">Search sort & time</div>
+                <div class="row">
+                  <select id="redditSearchSort" class="input" style="max-width:160px">
+                    <option value="relevance" selected>relevance</option>
+                    <option value="hot">hot</option>
+                    <option value="new">new</option>
+                    <option value="top">top</option>
+                    <option value="comments">comments</option>
+                  </select>
+                  <select id="redditSearchTime" class="input" style="max-width:140px">
+                    <option value="all" selected>all</option>
+                    <option value="hour">hour</option>
+                    <option value="day">day</option>
+                    <option value="week">week</option>
+                    <option value="month">month</option>
+                    <option value="year">year</option>
+                  </select>
+                </div>
+              </div>
+              <div id="redditTopOpts" class="hidden">
+                <div class="label">Top: time window</div>
+                <select id="redditTopTime" class="input" style="max-width:160px">
+                  <option value="day">day</option>
+                  <option value="week" selected>week</option>
+                  <option value="month">month</option>
+                  <option value="year">year</option>
+                  <option value="all">all</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="grid cols-3" style="margin-top:8px">
+              <div>
+                <div class="label">YouTube: max videos</div>
+                <input id="ytMaxVideos" type="number" min="0" value="25" class="input">
+              </div>
+              <div>
+                <div class="label">YouTube: comments/video</div>
+                <input id="ytComments" type="number" min="0" value="60" class="input">
+              </div>
+              <div>
+                <div class="label">YouTube: min views</div>
+                <input id="ytMinViews" type="number" min="0" value="5000" class="input">
+              </div>
+            </div>
+
+            <div class="grid cols-3" style="margin-top:8px">
+              <div>
+                <div class="label">Reddit: max posts</div>
+                <input id="rdMaxPosts" type="number" min="0" value="40" class="input">
+              </div>
+              <div>
+                <div class="label">Reddit: comments/post</div>
+                <input id="rdComments" type="number" min="0" value="8" class="input">
+              </div>
+              <div>
+                <div class="label">Reddit: min score</div>
+                <input id="rdMinScore" type="number" min="0" value="5" class="input">
+              </div>
+            </div>
+          </details>
+          <div class="row" style="margin-top:10px;align-items:center">
+            <button class="btn" id="explain">Explain</button>
+            <button class="btn primary" id="runBtn">Run</button>
+            <button class="btn" id="cancelBtn">Cancel</button>
+            <span class="small warn" id="runHint" style="display:none">Enable at least one source to run.</span>
+          </div>
+          <hr class="sep"/>
+          <div class="label">Command preview</div>
+          <textarea id="cmd" class="input mono" rows="3" spellcheck="false" style="flex:1;min-height:70px">insight-mine collect --topic "" --since YYYY-MM-DD --subreddits "" --limit 40 --yt-videos 25</textarea>
+        </div>
+
+        <div>
+          <div class="row" style="justify-content:space-between">
+            <div class="label">Connector status</div>
+            <div class="row">
+              <span class="status-chip status-ok" id="ytStatus">YouTube: enabled</span>
+              <span class="status-chip" id="trStatus">Transcripts: off</span>
+              <span class="status-chip status-ok" id="rdStatus">Reddit: enabled</span>
+            </div>
+          </div>
+          <div class="label" style="margin-top:6px">Progress (overall)</div>
+          <div class="progress"><div id="progOverall"></div></div>
+          <div class="grid cols-3" style="margin-top:8px">
+            <div id="ytProgWrap">
+              <div class="label">YouTube</div>
+              <div class="progress"><div id="progYT"></div></div>
+            </div>
+            <div id="rdProgWrap">
+              <div class="label">Reddit</div>
+              <div class="progress"><div id="progRD"></div></div>
+            </div>
+            <div>
+              <div class="label">Items</div>
+              <div class="item-chips">
+                <div class="item-chip"><span class="small">YouTube</span> <span class="n" id="ytCount">0</span></div>
+                <div class="item-chip"><span class="small">Reddit</span> <span class="n" id="rdCount">0</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="label" style="margin-top:8px">Live log <span id="liveSpinner" class="spinner hidden"></span><span id="liveCheck" class="spinner-check">✔</span></div>
+          <div class="copy-wrap">
+            <div id="log" class="log resizable copy-target" data-min="140" style="padding-right:40px"></div>
+            <button class="copy-btn" type="button" onclick="copyText($('#log'))" title="Copy log">⧉</button>
+          </div>
+          <div class="row" style="margin-top:6px;justify-content:flex-end">
+            <button class="btn small" id="exportLog">Export log</button>
+          </div>
+        </div>
+      </div>
+      <div class="small" style="margin-top:6px">This mock simulates a run—no external APIs are called.</div>
+    </div>
+
+    <!-- RESULTS -->
+    <div class="panel" data-page="results" style="display:none">
+      <div class="results-head">
+        <div class="run-chooser">
+          <div class="label">Run & view</div>
+          <button class="input run-btn" id="runBtnOpen">Choose run… <span class="small" id="runBtnLabel"></span></button>
+          <div class="run-menu" id="runMenu">
+            <input id="runSearch" class="input" placeholder="Search runs by topic/date/count" style="margin-bottom:6px">
+            <div id="runList"></div>
+          </div>
+          <div class="view-seg seg" id="viewSeg">
+            <button data-val="parents" class="active">Parents</button>
+            <button data-val="comments">Comments</button>
+          </div>
+        </div>
+        <div class="right">
+          <div class="row" style="justify-content:flex-end;align-items:center">
+            <select id="exportMode" class="select compact" title="Export mode (Parents view)">
+              <option value="parents+comments" selected>Parents + comments</option>
+              <option value="parents-only">Parents only</option>
+            </select>
+            <button class="btn" id="exportJSON">Export JSON</button>
+            <button class="btn" id="exportCSV">Export CSV</button>
+            <button class="btn" id="openPaste">Open paste‑ready</button>
+          </div>
+          <div class="row nowrap" style="margin-top:6px;justify-content:flex-end;align-items:center">
+            <span class="small" id="exportMeta" style="margin-right:auto;min-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+            <label class="small">Rows/page</label>
+            <select id="pageSize" class="select compact">
+              <option>10</option><option selected>25</option><option>50</option><option>100</option>
+            </select>
+            <div class="pagination">
+              <button class="btn small" id="prevPage">Prev</button>
+              <span class="small" id="pageInfo">Page 1 / 1</span>
+              <button class="btn small" id="nextPage">Next</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="metrics" id="inlineMetrics" style="margin-top:8px"></div>
+
+      <!-- Parents table -->
+      <div id="parentsView">
+        <div class="table-wrap" style="margin-top:8px">
+          <table id="resultsTable">
+            <thead>
+              <tr>
+                <th></th>
+                <th class="sortable" data-key="platform"><span class="label-wrap"><span>Platform</span><span class="sort-ind"></span></span></th>
+                <th class="sortable" data-key="title"><span class="label-wrap"><span>Title</span><span class="sort-ind"></span></span></th>
+                <th class="sortable" data-key="author"><span class="label-wrap"><span>Author</span><span class="sort-ind"></span></span></th>
+                <th class="sortable" data-key="context"><span class="label-wrap"><span>Subreddit/Channel</span><span class="sort-ind"></span></span></th>
+                <th class="sortable" data-key="metrics_score"><span class="label-wrap"><span>Score/Likes</span><span class="sort-ind"></span></span></th>
+                <th class="sortable" data-key="metrics_replies"><span class="label-wrap"><span>Replies</span><span class="sort-ind"></span></span></th>
+                <th class="sortable" data-key="metrics_views"><span class="label-wrap"><span>Views</span><span class="sort-ind"></span></span></th>
+                <th class="sortable" data-key="created_at"><span class="label-wrap"><span>Date</span><span class="sort-ind"></span></span></th>
+                <th>Link</th>
+              </tr>
+              <tr class="filter-row">
+                <td></td>
+                <td>
+                  <div class="seg" id="platformSegParents">
+                    <button data-val="all" class="active">All</button>
+                    <button data-val="youtube" title="YouTube"><span class="yt-icon"><svg viewBox="0 0 24 18" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="24" height="18" rx="3" fill="#FF0000"></rect><polygon points="10,5 18,9 10,13" fill="#FFFFFF"></polygon></svg></span></button>
+                    <button data-val="reddit" title="Reddit">👽</button>
+                  </div>
+                </td>
+                <td><div class="ac-wrap"><input id="f_title" placeholder="title" autocomplete="off"><div class="ac-dropdown" id="ac_title"></div></div></td>
+                <td><div class="ac-wrap"><input id="f_author" placeholder="author" autocomplete="off"><div class="ac-dropdown" id="ac_author"></div></div></td>
+                <td><div class="ac-wrap"><input id="f_ctx" placeholder="subreddit/channel" autocomplete="off"><div class="ac-dropdown" id="ac_ctx"></div></div></td>
+                <td><input id="f_score" placeholder=">=10"></td>
+                <td><input id="f_replies" placeholder=">=5"></td>
+                <td><input id="f_views" placeholder=">=1000"></td>
+                <td><input id="f_date" placeholder="YYYY-MM"></td>
+                <td></td>
+              </tr>
+            </thead>
+            <tbody id="resultsBody"></tbody>
+          </table>
+        </div>
+        <div class="row" style="margin-top:6px;justify-content:space-between">
+          <div class="small" id="rowCount">0 rows</div>
+          <div class="small">Tip: click the chevron to expand details for a row.</div>
+        </div>
+      </div>
+
+      <!-- Comments table -->
+      <div id="commentsView" class="hidden">
+        <div class="table-wrap" style="margin-top:8px">
+          <table id="commentsTable">
+            <thead>
+              <tr>
+                <th class="sortable" data-key="c_platform"><span class="label-wrap"><span>Platform</span><span class="sort-ind"></span></span></th>
+                <th class="sortable" data-key="c_text"><span class="label-wrap"><span>Comment</span><span class="sort-ind"></span></span></th>
+                <th class="sortable" data-key="c_author"><span class="label-wrap"><span>Author</span><span class="sort-ind"></span></span></th>
+                <th class="sortable" data-key="c_parent"><span class="label-wrap"><span>Parent title</span><span class="sort-ind"></span></span></th>
+                <th class="sortable" data-key="c_ctx"><span class="label-wrap"><span>Subreddit/Channel</span><span class="sort-ind"></span></span></th>
+                <th class="sortable" data-key="c_likes"><span class="label-wrap"><span>Likes/Score</span><span class="sort-ind"></span></span></th>
+                <th class="sortable" data-key="c_date"><span class="label-wrap"><span>Date</span><span class="sort-ind"></span></span></th>
+                <th>Link</th>
+              </tr>
+              <tr class="filter-row">
+                <td>
+                  <div class="seg" id="platformSegComments">
+                    <button data-val="all" class="active">All</button>
+                    <button data-val="youtube" title="YouTube"><span class="yt-icon"><svg viewBox="0 0 24 18" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="24" height="18" rx="3" fill="#FF0000"></rect><polygon points="10,5 18,9 10,13" fill="#FFFFFF"></polygon></svg></span></button>
+                    <button data-val="reddit" title="Reddit">👽</button>
+                  </div>
+                </td>
+                <td><input id="cf_text" placeholder="contains" autocomplete="off"></td>
+                <td><div class="ac-wrap"><input id="cf_author" placeholder="author" autocomplete="off"><div class="ac-dropdown" id="ac_c_author"></div></div></td>
+                <td><div class="ac-wrap"><input id="cf_parent" placeholder="title contains" autocomplete="off"><div class="ac-dropdown" id="ac_c_parent"></div></div></td>
+                <td><div class="ac-wrap"><input id="cf_ctx" placeholder="subreddit/channel" autocomplete="off"><div class="ac-dropdown" id="ac_c_ctx"></div></div></td>
+                <td><input id="cf_likes" placeholder=">=10"></td>
+                <td><input id="cf_date" placeholder="YYYY-MM"></td>
+                <td></td>
+              </tr>
+            </thead>
+            <tbody id="commentsBody"></tbody>
+          </table>
+        </div>
+        <div class="row" style="margin-top:6px;justify-content:space-between">
+          <div class="small" id="commentsCount">0 comments</div>
+          <div class="small">All comments across platforms for this run.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modals -->
+  <div id="modalExplain" class="modal-overlay" style="display:none;">
+    <div class="modal-content">
+      <div class="row" style="justify-content:space-between">
+        <strong>Effective knobs</strong>
+        <button class="btn" onclick="closeExplain()">Close</button>
+      </div>
+      <pre id="explainPre" class="card resizable mono" ></pre>
+    </div>
+  </div>
+
+  <div id="modalPaste" class="modal-overlay" style="display:none;">
+    <div class="modal-content">
+      <div class="row" style="justify-content:space-between">
+        <strong>Paste‑ready</strong>
+        <div class="row">
+          <div class="seg" id="pasteSeg">
+            <button data-val="subset" class="active">Subset</button>
+            <button data-val="all">All</button>
+          </div>
+          <button class="btn" onclick="downloadText(pasteFileName(), document.getElementById('pastePre').textContent)">Download</button>
+          <button class="btn" onclick="closePaste()">Close</button>
+        </div>
+      </div>
+      <div class="small" id="pasteMeta"></div>
+      <div class="copy-wrap">
+        <pre id="pastePre" class="card resizable mono copy-target" data-min="220" data-capvh="60" style="padding-right:40px"></pre>
+        <button class="copy-btn" type="button" onclick="copyText(document.getElementById('pastePre'))" title="Copy to clipboard">⧉</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalTelemetry" class="modal-overlay" style="display:none;">
+    <div class="modal-content">
+      <div class="row" style="justify-content:space-between">
+        <strong>Telemetry</strong>
+        <button class="btn" id="closeTelemetryBtn">Close</button>
+      </div>
+      <div class="grid cols-2">
+        <div>
+          <div class="label">Connector totals</div>
+          <table><thead><tr><th>Connector</th><th>Items</th></tr></thead><tbody id="keptT"></tbody></table>
+        </div>
+        <div>
+          <div class="label">Drop reasons</div>
+          <table><thead><tr><th>Reason</th><th>Count</th></tr></thead><tbody id="dropT"></tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalSettings" class="modal-overlay" style="display:none;">
+    <div class="modal-content" style="max-width:700px">
+      <div class="row" style="justify-content:space-between">
+        <strong>Settings</strong>
+        <button class="btn primary" id="closeSettingsBtn">Close</button>
+      </div>
+      <div class="settings-file-row">
+        <div class="label">Environment file</div>
+        <div class="row" style="gap:8px;align-items:center">
+          <code class="settings-file-path" id="envFilePath">(loading...)</code>
+          <button class="btn small" id="loadEnvBtn" type="button">📂 Load...</button>
+        </div>
+      </div>
+      <div style="margin-top:12px">
+        <div class="label">Contents</div>
+        <textarea id="envTextarea" class="input mono resizable" data-min="200" style="min-height:200px" spellcheck="false"></textarea>
+      </div>
+      <div class="row" style="margin-top:10px;justify-content:space-between;align-items:center">
+        <span class="small" id="settingsStatus"></span>
+        <div class="row">
+          <button class="btn" id="saveEnvBtn" type="button">💾 Save</button>
+          <button class="btn" id="saveEnvAsBtn" type="button">📄 Save As...</button>
+        </div>
+      </div>
+      <div class="card small" style="margin-top:12px">
+        <p style="margin:0">Environment variables control API keys and output directories. Changes take effect on the next run.</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalSubreddits" class="modal-overlay" style="display:none;">
+    <div class="modal-content" style="max-width:500px">
+      <div class="row" style="justify-content:space-between">
+        <strong>Select Subreddits</strong>
+        <div class="row">
+          <button class="btn" id="verifySubredditsBtn" type="button">🔍 Verify All</button>
+          <button class="btn primary" id="closeSubredditsBtn">Done</button>
+        </div>
+      </div>
+      <div class="subreddit-input-row">
+        <input id="subredditInput" class="input" placeholder="Type subreddit name (e.g., ElectricVehicles)" style="flex:1">
+        <button class="btn primary" id="addSubredditBtn" type="button">Add</button>
+      </div>
+      <div class="small" style="margin-top:4px">Press Enter or click Add. The "r/" prefix is added automatically.</div>
+      <div class="label" style="margin-top:12px">Selected subreddits</div>
+      <div class="subreddit-modal-chips" id="subredditModalChips">
+        <div class="small" id="noSubredditsMsg">No subreddits selected yet.</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <!-- Datalists for filter autocomplete -->
+
+<script>
+// ---- Theme Toggle ----
+(function initTheme(){
+  const saved = localStorage.getItem("im_theme");
+  const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const theme = saved || (prefersDark ? "dark" : "light");
+  document.documentElement.setAttribute("data-theme", theme);
+  // Update icon after DOM ready
+  document.addEventListener("DOMContentLoaded", () => updateThemeIcon(theme));
+})();
+function updateThemeIcon(theme){
+  const icon = document.getElementById("themeIcon");
+  if(icon) icon.textContent = theme === "light" ? "☀️" : "🌙";
+}
+function toggleTheme(){
+  const current = document.documentElement.getAttribute("data-theme") || "dark";
+  const next = current === "dark" ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", next);
+  localStorage.setItem("im_theme", next);
+  updateThemeIcon(next);
+}
+
+// ---- Helpers ----
+function $(q, el=document){ return el.querySelector(q) }
+function $all(q, el=document){ return Array.from(el.querySelectorAll(q)) }
+function nowISO(){ return new Date().toISOString() }
+function rndInt(a,b){ return Math.floor(Math.random()*(b-a+1))+a }
+function fmt(n){ return (n===null||n===undefined)?"":n.toLocaleString() }
+function escapeHtml(s){ return (s||"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;") }
+function formatTranscript(text, targetLen=500){
+  if(!text) return "";
+  // Normalize whitespace (collapse newlines and multiple spaces)
+  text = text.replace(/\s+/g, ' ').trim();
+  const words = text.split(' ');
+  const paras = [];
+  let para = [], len = 0;
+  for(const w of words){
+    para.push(w);
+    len += w.length + 1;
+    if(len >= targetLen && w && /[.!?]$/.test(w)){
+      paras.push(para.join(' '));
+      para = []; len = 0;
+    }
+  }
+  if(para.length) paras.push(para.join(' '));
+  return paras.join('\n\n');
+}
+function fmtDuration(sec){ if(!sec || sec<=0) return ""; const h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60), s=sec%60; return h>0 ? `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}` : `${m}:${String(s).padStart(2,'0')}`; }
+function parseNumFilter(s, v){
+  s = (s||"").trim(); if(!s) return true;
+  if(s.startsWith(">=")) return v >= (+s.slice(2));
+  if(s.startsWith("<=")) return v <= (+s.slice(2));
+  if(s.startsWith(">")) return v > (+s.slice(1));
+  if(s.startsWith("<")) return v < (+s.slice(1));
+  return (""+v).includes(s);
+}
+function debounce(fn, ms){ let t; return (...args)=>{ clearTimeout(t); t=setTimeout(()=>fn(...args), ms); } }
+function showToast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"), 1600); }
+async function copyText(el){
+  if(!el) return;
+  const text=("value" in el) ? (el.value||"") : (el.textContent||"");
+  try{
+    if(navigator.clipboard?.writeText){
+      await navigator.clipboard.writeText(text);
+    } else {
+      const ta=document.createElement("textarea");
+      ta.value=text;
+      ta.style.position="fixed"; ta.style.opacity="0";
+      document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta);
+    }
+    showToast("Copied");
+  }catch(err){
+    console.warn("Copy failed", err);
+    showToast("Copy failed");
+  }
+}
+function copyFromSibling(btn){
+  const target = btn?.previousElementSibling || btn?.parentElement?.querySelector(".copy-target");
+  if(target) copyText(target); else showToast("Nothing to copy");
+}
+function wrapWithCopy(el, title="Copy"){
+  if(!el || el.closest(".copy-wrap")) return null;
+  const wrap=document.createElement("div");
+  wrap.className="copy-wrap";
+  el.classList.add("copy-target");
+  if(el.parentNode){ el.parentNode.insertBefore(wrap, el); wrap.appendChild(el); }
+  const btn=document.createElement("button");
+  btn.type="button";
+  btn.className="copy-btn";
+  btn.title=title;
+  btn.textContent="⧉";
+  btn.addEventListener("click", ()=>copyText(el));
+  wrap.appendChild(btn);
+  return btn;
+}
+
+// State
+let runs = [];
+let currentRun = null;
+let sortKey = "created_at";
+let sortDir = "desc";
+let filters = {title:"",author:"",ctx:"",score:"",replies:"",views:"",date:""};
+let platformSegParents = "all";
+let cSort = { key:"c_date", dir:"desc" };
+let cFilters = { text:"", author:"", parent:"", ctx:"", likes:"", date:""};
+let platformSegComments = "all";
+let page = 1;
+let pageSize = 25;
+let currentView = "parents";
+
+const YT_ICON='<span class="yt-icon" aria-label="YouTube"><svg viewBox="0 0 24 18" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="24" height="18" rx="3" fill="#FF0000"></rect><polygon points="10,5 18,9 10,13" fill="#FFFFFF"></polygon></svg></span>';
+const RD_ICON='👽';
+
+// Tabs
+$all(".tab").forEach(t=>t.addEventListener("click", e=>{
+  $all(".tab").forEach(x=>x.classList.remove("active"));
+  t.classList.add("active");
+  const tab=t.getAttribute("data-tab");
+  $all("[data-page]").forEach(p=>p.style.display = (p.getAttribute("data-page")===tab ? "block":"none"));
+  if(tab==="results"){ openRunMenu(false); populateRunMenu(); renderActiveView(); }
+}));
+
+// More menu
+$("#moreBtn").addEventListener("click", ()=>{ const m=$("#moreMenu"); m.style.display = (m.style.display==="block"?"none":"block"); });
+
+// Theme toggle
+$("#themeToggle").addEventListener("click", toggleTheme);
+
+// Subreddit picker
+let selectedSubreddits = [];
+
+function openSubredditModal() {
+  $("#modalSubreddits").style.display = "block";
+  $("#subredditInput").focus();
+  renderModalChips();
+}
+
+function closeSubredditModal() {
+  $("#modalSubreddits").style.display = "none";
+  syncSubredditsToMain();
+  updateCmd();
+}
+
+function formatSubreddit(name) {
+  // Remove r/ prefix if present, trim whitespace
+  let clean = (name || "").trim().replace(/^r\//i, "").trim();
+  // Remove any remaining slashes or invalid chars
+  clean = clean.replace(/[^a-zA-Z0-9_]/g, "");
+  return clean ? "r/" + clean : "";
+}
+
+function addSubreddit() {
+  const input = $("#subredditInput");
+  const formatted = formatSubreddit(input.value);
+  if (!formatted) {
+    input.value = "";
+    return;
+  }
+  // Check for duplicates (case-insensitive)
+  const exists = selectedSubreddits.some(s => s.toLowerCase() === formatted.toLowerCase());
+  if (exists) {
+    showToast("Subreddit already added");
+    input.value = "";
+    return;
+  }
+  selectedSubreddits.push(formatted);
+  input.value = "";
+  renderModalChips();
+  syncSubredditsToMain();
+  updateCmd();
+}
+
+function removeSubreddit(sub) {
+  selectedSubreddits = selectedSubreddits.filter(s => s !== sub);
+  renderModalChips();
+  syncSubredditsToMain();
+  updateCmd();
+}
+
+function renderModalChips() {
+  const container = $("#subredditModalChips");
+  const noMsg = $("#noSubredditsMsg");
+  
+  // Clear existing chips (but keep the no-message element)
+  container.querySelectorAll(".subreddit-chip").forEach(el => el.remove());
+  
+  if (selectedSubreddits.length === 0) {
+    if (noMsg) noMsg.style.display = "block";
+  } else {
+    if (noMsg) noMsg.style.display = "none";
+    selectedSubreddits.forEach(sub => {
+      const chip = document.createElement("span");
+      chip.className = "subreddit-chip";
+      chip.innerHTML = `${sub} <button class="remove-chip" type="button" title="Remove">×</button>`;
+      chip.querySelector(".remove-chip").addEventListener("click", () => removeSubreddit(sub));
+      container.appendChild(chip);
+    });
+  }
+}
+
+function syncSubredditsToMain() {
+  // Update hidden input
+  $("#subs").value = selectedSubreddits.join(",");
+  
+  // Update main view chips
+  const mainChips = $("#subredditChips");
+  mainChips.innerHTML = "";
+  selectedSubreddits.forEach(sub => {
+    const chip = document.createElement("span");
+    chip.className = "subreddit-chip";
+    chip.innerHTML = `${sub} <button class="remove-chip" type="button" title="Remove">×</button>`;
+    chip.querySelector(".remove-chip").addEventListener("click", () => {
+      removeSubreddit(sub);
+    });
+    mainChips.appendChild(chip);
+  });
+}
+
+// Event listeners for subreddit picker
+$("#openSubredditPicker").addEventListener("click", openSubredditModal);
+$("#closeSubredditsBtn").addEventListener("click", closeSubredditModal);
+$("#addSubredditBtn").addEventListener("click", addSubreddit);
+$("#subredditInput").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    addSubreddit();
+  }
+});
+// Close modal on overlay click
+$("#modalSubreddits").addEventListener("click", (e) => {
+  if (e.target.id === "modalSubreddits") closeSubredditModal();
+});
+
+// Subreddit verification
+let subredditVerificationState = {}; // { "r/SubName": "valid" | "invalid" | "checking" | null }
+
+async function checkSubredditExists(subredditName) {
+  // Extract just the name without r/ prefix
+  const name = subredditName.replace(/^r\//i, "");
+  try {
+    // Use Reddit's public JSON API to check if subreddit exists
+    const response = await fetch(`https://www.reddit.com/r/${name}/about.json`, {
+      headers: { "Accept": "application/json" }
+    });
+    if (response.ok) {
+      const data = await response.json();
+      // Check if it's a valid subreddit (not a redirect or error)
+      return data.kind === "t5" || (data.data && data.data.display_name);
+    }
+    return false;
+  } catch (err) {
+    console.warn("Subreddit check failed for", subredditName, err);
+    return false;
+  }
+}
+
+async function verifyAllSubreddits() {
+  if (selectedSubreddits.length === 0) {
+    showToast("No subreddits to verify");
+    return;
+  }
+  
+  const btn = $("#verifySubredditsBtn");
+  btn.disabled = true;
+  btn.textContent = "⏳ Checking...";
+  
+  // Reset all to checking state
+  selectedSubreddits.forEach(sub => {
+    subredditVerificationState[sub] = "checking";
+  });
+  renderModalChips();
+  
+  let validCount = 0;
+  let invalidCount = 0;
+  
+  // Check each subreddit
+  for (const sub of selectedSubreddits) {
+    const exists = await checkSubredditExists(sub);
+    subredditVerificationState[sub] = exists ? "valid" : "invalid";
+    if (exists) validCount++; else invalidCount++;
+    renderModalChips();
+    // Small delay between requests to be nice to Reddit
+    await new Promise(r => setTimeout(r, 200));
+  }
+  
+  btn.disabled = false;
+  btn.textContent = "🔍 Verify All";
+  
+  // Show summary toast
+  if (invalidCount === 0) {
+    showToast(`✓ All ${validCount} subreddits verified`);
+  } else {
+    showToast(`${validCount} valid, ${invalidCount} not found`);
+  }
+}
+
+// Update renderModalChips to show verification status
+const originalRenderModalChips = renderModalChips;
+renderModalChips = function() {
+  const container = $("#subredditModalChips");
+  const noMsg = $("#noSubredditsMsg");
+  
+  // Clear existing chips
+  container.querySelectorAll(".subreddit-chip").forEach(el => el.remove());
+  
+  if (selectedSubreddits.length === 0) {
+    if (noMsg) noMsg.style.display = "block";
+  } else {
+    if (noMsg) noMsg.style.display = "none";
+    selectedSubreddits.forEach(sub => {
+      const state = subredditVerificationState[sub];
+      const chip = document.createElement("span");
+      chip.className = "subreddit-chip" + (state ? ` ${state}` : "");
+      
+      let statusIcon = "";
+      if (state === "checking") statusIcon = '<span class="verify-status">⏳</span>';
+      else if (state === "valid") statusIcon = '<span class="verify-status">✓</span>';
+      else if (state === "invalid") statusIcon = '<span class="verify-status">✗</span>';
+      
+      chip.innerHTML = `${sub}${statusIcon} <button class="remove-chip" type="button" title="Remove">×</button>`;
+      chip.querySelector(".remove-chip").addEventListener("click", () => removeSubreddit(sub));
+      container.appendChild(chip);
+    });
+  }
+};
+
+// Clear verification state when removing a subreddit
+const originalRemoveSubreddit = removeSubreddit;
+removeSubreddit = function(sub) {
+  delete subredditVerificationState[sub];
+  originalRemoveSubreddit(sub);
+};
+
+// Event listener for verify button
+$("#verifySubredditsBtn").addEventListener("click", verifyAllSubreddits);
+document.addEventListener("click",(e)=>{ if(!e.target.closest(".more")) $("#moreMenu").style.display="none"; });
+$("#openTelemetry").addEventListener("click",(e)=>{ e.preventDefault(); renderTelemetry(); $("#moreMenu").style.display="none"; $("#modalTelemetry").style.display="block"; });
+$("#openSettings").addEventListener("click", async (e)=>{ 
+  e.preventDefault(); 
+  $("#moreMenu").style.display="none"; 
+  $("#modalSettings").style.display="block";
+  await loadEnvSettings();
+});
+$("#closeTelemetryBtn").addEventListener("click", ()=> { $("#modalTelemetry").style.display="none"; });
+$("#closeSettingsBtn").addEventListener("click", ()=> { $("#modalSettings").style.display="none"; });
+
+// Settings modal functions
+async function loadEnvSettings() {
+  const pathEl = $("#envFilePath");
+  const textEl = $("#envTextarea");
+  const statusEl = $("#settingsStatus");
+  
+  pathEl.textContent = "(loading...)";
+  textEl.value = "";
+  statusEl.textContent = "";
+  
+  try {
+    if (window.pywebview && window.pywebview.api) {
+      const result = await window.pywebview.api.get_env();
+      pathEl.textContent = result.env_path || "(unknown)";
+      pathEl.title = result.env_path || "";
+      textEl.value = result.text || "";
+    } else {
+      pathEl.textContent = "(bridge not available)";
+      textEl.value = "# Bridge not available in standalone mode";
+    }
+  } catch (err) {
+    pathEl.textContent = "(error)";
+    statusEl.textContent = "Error loading: " + err.message;
+  }
+}
+
+async function saveEnv() {
+  const textEl = $("#envTextarea");
+  const statusEl = $("#settingsStatus");
+  
+  try {
+    if (window.pywebview && window.pywebview.api) {
+      const result = await window.pywebview.api.save_env(textEl.value);
+      if (result.ok) {
+        statusEl.textContent = "✓ Saved";
+        showToast("Settings saved");
+        setTimeout(() => { statusEl.textContent = ""; }, 3000);
+      } else {
+        statusEl.textContent = "Error: " + (result.error || "unknown");
+      }
+    } else {
+      showToast("Bridge not available");
+    }
+  } catch (err) {
+    statusEl.textContent = "Error: " + err.message;
+  }
+}
+
+async function loadEnvFile() {
+  const pathEl = $("#envFilePath");
+  const textEl = $("#envTextarea");
+  const statusEl = $("#settingsStatus");
+  
+  try {
+    if (window.pywebview && window.pywebview.api) {
+      const result = await window.pywebview.api.choose_env_file();
+      if (result.cancelled) return;
+      if (result.ok) {
+        pathEl.textContent = result.env_path || "(unknown)";
+        pathEl.title = result.env_path || "";
+        textEl.value = result.text || "";
+        statusEl.textContent = "✓ Loaded";
+        showToast("Environment file loaded");
+        setTimeout(() => { statusEl.textContent = ""; }, 3000);
+      } else {
+        statusEl.textContent = "Error: " + (result.error || "unknown");
+      }
+    } else {
+      showToast("Bridge not available");
+    }
+  } catch (err) {
+    statusEl.textContent = "Error: " + err.message;
+  }
+}
+
+async function saveEnvAs() {
+  const textEl = $("#envTextarea");
+  const pathEl = $("#envFilePath");
+  const statusEl = $("#settingsStatus");
+  
+  try {
+    if (window.pywebview && window.pywebview.api) {
+      const result = await window.pywebview.api.save_env_as(textEl.value);
+      if (result.cancelled) return;
+      if (result.ok) {
+        pathEl.textContent = result.env_path || "(unknown)";
+        pathEl.title = result.env_path || "";
+        statusEl.textContent = "✓ Saved to new file";
+        showToast("Settings saved to new file");
+        setTimeout(() => { statusEl.textContent = ""; }, 3000);
+      } else {
+        statusEl.textContent = "Error: " + (result.error || "unknown");
+      }
+    } else {
+      showToast("Bridge not available");
+    }
+  } catch (err) {
+    statusEl.textContent = "Error: " + err.message;
+  }
+}
+
+// Settings modal button event listeners
+$("#loadEnvBtn").addEventListener("click", loadEnvFile);
+$("#saveEnvBtn").addEventListener("click", saveEnv);
+$("#saveEnvAsBtn").addEventListener("click", saveEnvAs);
+
+// Init defaults
+window.addEventListener("load", ()=>{
+  const d=new Date(); d.setDate(d.getDate()-30); $("#since").value=d.toISOString().slice(0,10);
+  toggleRedditQuery();
+  bindConnectorEvents();
+  updateConnectorUI();
+  bindViewSeg();
+  wrapWithCopy($("#cmd"), "Copy command");
+  // Log copy button is now in HTML directly
+  // v16: new storage key to avoid loading old cached runs with stale link text
+  try{ const data = localStorage.getItem("im_runs_v16"); if(data){ runs = JSON.parse(data); currentRun = runs[0]||null; } }catch(_){}
+  updateSortIndicatorsParents(); updateSortIndicatorsComments();
+});
+
+// Connector toggles
+function bindConnectorEvents(){
+  $("#enableYoutube").addEventListener("change", ()=>{
+    $("#ytStatus").className="status-chip "+($("#enableYoutube").checked?"status-ok":"status-off");
+    $("#ytStatus").textContent="YouTube: "+($("#enableYoutube").checked?"enabled":"disabled");
+    updateConnectorUI(); updateCmd();
+  });
+  $("#enableReddit").addEventListener("change", ()=>{
+    $("#rdStatus").className="status-chip "+($("#enableReddit").checked?"status-ok":"status-off");
+    $("#rdStatus").textContent="Reddit: "+($("#enableReddit").checked?"enabled":"disabled");
+    updateConnectorUI(); updateCmd();
+  });
+  $("#transcriptMode").addEventListener("change", ()=>{
+    const mode = $("#transcriptMode").value;
+    const isOn = mode !== "off";
+    $("#trStatus").className="status-chip "+(isOn?"status-ok":"");
+    $("#trStatus").textContent="Transcripts: "+mode;
+    updateCmd();
+  });
+  // Initialize transcript status chip
+  {
+    const mode = $("#transcriptMode").value;
+    const isOn = mode !== "off";
+    $("#trStatus").className="status-chip "+(isOn?"status-ok":"");
+    $("#trStatus").textContent="Transcripts: "+mode;
+  }
+}
+function updateConnectorUI(){
+  const yt=$("#enableYoutube").checked, rd=$("#enableReddit").checked;
+  $("#ytProgWrap").style.display= yt?"block":"none";
+  $("#rdProgWrap").style.display= rd?"block":"none";
+  const canRun= yt||rd; $("#runBtn").disabled=!canRun; $("#runHint").style.display= canRun?"none":"inline";
+}
+
+// Reddit selector
+$("#redditSelector").addEventListener("change", toggleRedditQuery);
+function toggleRedditQuery(){
+  const sel=$("#redditSelector").value;
+  $("#redditQueryWrap").style.display=(sel==="search"?"block":"none");
+  $("#redditSearchOpts").classList.toggle("hidden", sel!=="search");
+  $("#redditTopOpts").classList.toggle("hidden", sel!=="top");
+  updateCmd();
+}
+
+// Explain modal
+$("#explain").addEventListener("click", ()=>{
+  const knobs=collectKnobs();
+  $("#explainPre").textContent = JSON.stringify({knobs, cli:buildCli(knobs)}, null, 2);
+  ensureSized($("#explainPre"));
+  $("#modalExplain").style.display="block";
+});
+function closeExplain(){ $("#modalExplain").style.display="none" }
+
+// Run simulation
+let cancelFlag=false;
+$("#cancelBtn").addEventListener("click", ()=>{ cancelFlag=true; log("Cancelled."); resetProgress(); });
+$("#runBtn").addEventListener("click", simulateRun);
+function resetProgress(){ setProg("#progOverall",0); setProg("#progYT",0); setProg("#progRD",0); $("#ytCount").textContent="0"; $("#rdCount").textContent="0"; $("#log").textContent=""; }
+$("#exportLog").addEventListener("click", ()=>{ downloadText("collect-log.txt", $("#log").textContent||""); showToast("Exported collect-log.txt"); });
+function log(line){ const el=$("#log"); el.textContent+=(el.textContent?"\n":"")+line; el.scrollTop=el.scrollHeight; }
+function setProg(sel,p){ const el=$(sel); if(el) el.style.width = Math.max(0,Math.min(100,p))+"%"; }
+
+function simulateRun(){
+  cancelFlag=false; resetProgress();
+  const knobs=collectKnobs();
+  if(!knobs.connectors.youtube && !knobs.connectors.reddit){ log("! No sources enabled."); alert("Enable at least one source to run."); return; }
+  const manifest={ started_at: nowISO(), knobs, items: [] };
+  const stats={ kept:{youtube:0,reddit:0}, dropped:{low_views:0,low_score:0,lang_mismatch:0}, phases:[] };
+  const pasteLines=[];
+  const steps=[
+    {label:"Resolve knobs", overall:10},
+    {label:"Check connectors", overall:15},
+    {label:"YouTube: search & fetch", overall:60, yt:60},
+    {label:"Reddit: search & fetch", overall:85, rd:60},
+    {label:"Dedupe & finalize", overall:95, yt:80, rd:80},
+    {label:"Done", overall:100, yt:100, rd:100},
+  ];
+  let i=0;
+  function tick(){
+    if(cancelFlag) return;
+    const s=steps[i];
+    log("• "+s.label+"...");
+    setProg("#progOverall", s.overall||0);
+    if(knobs.connectors.youtube && s.yt!=null) setProg("#progYT", s.yt);
+    if(knobs.connectors.reddit && s.rd!=null) setProg("#progRD", s.rd);
+    if(s.label.startsWith("YouTube") && knobs.connectors.youtube){
+      const ytItems=simulateYouTube(knobs);
+      stats.kept.youtube+=ytItems.length; $("#ytCount").textContent=""+stats.kept.youtube;
+      manifest.items.push(...ytItems); ytItems.forEach(it=> pasteLines.push(pasteLine(it)));
+    }
+    if(s.label.startsWith("Reddit") && knobs.connectors.reddit){
+      const rdItems=simulateReddit(knobs);
+      stats.kept.reddit+=rdItems.length; $("#rdCount").textContent=""+stats.kept.reddit;
+      manifest.items.push(...rdItems); rdItems.forEach(it=> pasteLines.push(pasteLine(it)));
+    }
+    if(s.label.startsWith("Dedupe")){ const seen=new Set(); manifest.items=manifest.items.filter(it=>!seen.has(it.url) && seen.add(it.url)); }
+    i++;
+    if(i<steps.length){ setTimeout(tick, 250); }
+    else {
+      const run={ id:"run_"+Date.now(), manifest, stats, pasteReady: pasteLines.join("\n\n---\n\n") };
+      currentRun=run; runs.unshift(run);
+      try{ localStorage.setItem("im_runs_v16", JSON.stringify(runs.slice(0,12))); }catch(_){}
+      $("#runBtnLabel").textContent = runDesc(run);
+      renderActiveView(); renderTelemetry();
+      log("✓ Completed. Items: "+manifest.items.length);
+      if(knobs.connectors.youtube) setProg("#progYT",100);
+      if(knobs.connectors.reddit) setProg("#progRD",100);
+    }
+  }
+  tick();
+}
+
+// Simulated data
+function simulateYouTube(knobs){
+  const { max_videos, comments_per_video, min_views } = knobs.advanced.yt;
+  const n=Math.min(max_videos,30); let out=[];
+  for(let i=0;i<n;i++){
+    const views=rndInt(500,250000); if(views<min_views) continue;
+    const vid="yt_"+rndInt(100000,999999), channelId="Channel_"+rndInt(100,999);
+    const transcriptMode = knobs.transcript_mode || "off";
+    const allowAuto = transcriptMode !== "off";
+    const autoHas = Math.random() < 0.55;
+    const comments=makeComments(Math.max(3, Math.min(comments_per_video, 20+Math.floor(Math.random()*comments_per_video))), "youtube");
+    comments.forEach(c=> c.url=`https://www.youtube.com/watch?v=${vid}&lc=${c.id}`);
+    const transcriptText=(allowAuto && autoHas)? fakeTranscript(): "";
+    out.push({
+      platform:"youtube", kind:"video", id:vid,
+      url:`https://www.youtube.com/watch?v=${vid}`,
+      author:"Channel "+channelId.split("_")[1],
+      authorUrl:`https://www.youtube.com/@${channelId}`,
+      created_at:new Date(Date.now()-rndInt(0,2592000000)).toISOString(),
+      title:`Video about ${($("#topic").value||"your topic")}`,
+      text:"(description) "+lipsum(28),
+      metrics:{ score:null, replies:comments.length, likes:rndInt(50,8000), views:views },
+      context:{ channel: channelId, channelUrl:`https://www.youtube.com/@${channelId}` },
+      comments, transcript: transcriptText
+    });
+  }
+  return out;
+}
+function simulateReddit(knobs){
+  const { max_posts, comments_per_post, min_score } = knobs.advanced.rd;
+  const subs=(knobs.subreddits.length?knobs.subreddits:["r/SampleSub","r/AskMock"]).map(s=>s.replace(/^r\//,"r/"));
+  const n=Math.min(max_posts,50); let out=[];
+  for(let i=0;i<n;i++){
+    const score=rndInt(0,350); if(score<min_score) continue;
+    const t3="t3_"+rndInt(100000,999999); const sub=subs[i%subs.length];
+    const comments=makeComments(Math.max(2, Math.min(comments_per_post, 6+Math.floor(Math.random()*comments_per_post))), "reddit");
+    const postUrl=`https://www.reddit.com/${sub}/comments/${t3}/post-title/`;
+    comments.forEach(c=> c.url=`${postUrl}${c.id}/`);
+    out.push({
+      platform:"reddit", kind:"post", id:t3,
+      url:postUrl,
+      author:"u_user"+rndInt(100,999),
+      authorUrl:`https://www.reddit.com/user/u_user${rndInt(100,999)}`,
+      created_at:new Date(Date.now()-rndInt(0,2592000000)).toISOString(),
+      title:`[${sub}] Discussion of ${($("#topic").value||"your topic")}`,
+      text:lipsum(40),
+      metrics:{ score:score, replies:comments.length, likes:null, views:null },
+      context:{ subreddit: sub, subredditUrl:`https://www.reddit.com/${sub}` },
+      comments
+    });
+  }
+  return out;
+}
+function makeComments(n, platform){
+  let arr=[];
+  for(let i=0;i<n;i++){
+    arr.push({
+      id:(platform==="youtube"?"yc_":"rc_")+rndInt(100000,999999),
+      author:(platform==="youtube"?"Viewer ":"u_")+rndInt(10,999),
+      authorUrl:(platform==="youtube"?"#":"https://www.reddit.com/user/u_"+rndInt(10,999)),
+      text:lipsum(Math.floor(Math.random()*10)+8),
+      likes:Math.floor(Math.random()*450),
+      created_at:new Date(Date.now()-Math.floor(Math.random()*2592000000)).toISOString(),
+      url:"#"
+    });
+  }
+  return arr;
+}
+function fakeTranscript(){ return "[Transcript] "+lipsum(420); }
+function lipsum(n){ const pool="lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua fermentum posuere urna nec tincidunt praesent semper feugiat nibh sed pulvinar proin gravida hendrerit lectus a".split(" "); let out=[]; for(let i=0;i<n;i++){ out.push(pool[Math.floor(Math.random()*pool.length)]) } return out.join(" "); }
+function pasteLine(it){ const ttl=it.title?it.title+" — ":""; const body=(it.text||"").replace(/\s+/g," ").slice(0,1200); return `[${it.platform}] ${ttl}${body}\n${it.url}`; }
+
+function runDesc(r){ const started=new Date(r.manifest.started_at).toLocaleString(); const topic=r.manifest.knobs.topic||"(no topic)"; const items=r.manifest.items.length; return `${started} — ${topic} — ${items} items`; }
+
+// Sorting
+$all("#resultsTable th.sortable").forEach(th=>{
+  th.addEventListener("click", ()=>{
+    const k=th.getAttribute("data-key");
+    if(sortKey===k){ sortDir=(sortDir==="asc"?"desc":(sortDir==="desc"?"none":"asc")); } else { sortKey=k; sortDir="asc"; }
+    updateSortIndicatorsParents(); renderResults();
+  });
+});
+$all("#commentsTable th.sortable").forEach(th=>{
+  th.addEventListener("click", ()=>{
+    const k=th.getAttribute("data-key");
+    if(cSort.key===k){ cSort.dir=(cSort.dir==="asc"?"desc":(cSort.dir==="desc"?"none":"asc")); } else { cSort.key=k; cSort.dir="asc"; }
+    updateSortIndicatorsComments(); renderCommentsTable();
+  });
+});
+function updateSortIndicatorsParents(){ $all("#resultsTable th.sortable").forEach(th=>{ const ind=th.querySelector(".sort-ind"); const k=th.getAttribute("data-key"); ind.textContent=""; if(k===sortKey){ ind.textContent=(sortDir==="asc"?"▲":(sortDir==="desc"?"▼":"•")); } }); }
+function updateSortIndicatorsComments(){ $all("#commentsTable th.sortable").forEach(th=>{ const ind=th.querySelector(".sort-ind"); const k=th.getAttribute("data-key"); ind.textContent=""; if(k===cSort.key){ ind.textContent=(cSort.dir==="asc"?"▲":(cSort.dir==="desc"?"▼":"•")); } }); }
+
+// Filters
+const debParents=debounce(()=>{
+  filters={ title:$("#f_title").value, author:$("#f_author").value, ctx:$("#f_ctx").value, score:$("#f_score").value, replies:$("#f_replies").value, views:$("#f_views").value, date:$("#f_date").value };
+  page=1; renderResults();
+}, 160);
+["f_title","f_author","f_ctx","f_score","f_replies","f_views","f_date"].forEach(id=> $("#"+id).addEventListener("input", debParents));
+const debComments=debounce(()=>{
+  cFilters={ text:$("#cf_text").value, author:$("#cf_author").value, parent:$("#cf_parent").value, ctx:$("#cf_ctx").value, likes:$("#cf_likes").value, date:$("#cf_date").value };
+  page=1; renderCommentsTable();
+}, 160);
+["cf_text","cf_author","cf_parent","cf_ctx","cf_likes","cf_date"].forEach(id=> $("#"+id).addEventListener("input", debComments));
+
+// Platform segmented controls
+function bindPlatformSeg(id, setter){
+  const seg=$(id); if(!seg) return;
+  seg.addEventListener("click", (e)=>{ const b=e.target.closest("button"); if(!b) return; $all("button",seg).forEach(x=>x.classList.remove("active")); b.classList.add("active"); setter(b.dataset.val); });
+}
+bindPlatformSeg("#platformSegParents", (v)=>{ platformSegParents=v; page=1; renderResults(); });
+bindPlatformSeg("#platformSegComments", (v)=>{ platformSegComments=v; page=1; renderCommentsTable(); });
+
+// View segmented control
+function bindViewSeg(){
+  $("#viewSeg").addEventListener("click", (e)=>{
+    const b=e.target.closest("button"); if(!b) return;
+    $all("#viewSeg button").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active"); currentView=b.dataset.val;
+    $("#parentsView").classList.toggle("hidden", currentView!=="parents");
+    $("#commentsView").classList.toggle("hidden", currentView!=="comments");
+    $("#exportMode").style.display = (currentView==="parents" ? "inline-block" : "none");
+    page=1; renderActiveView();
+  });
+}
+function renderActiveView(){ if(currentView==='comments'){ renderCommentsTable(); } else { renderResults(); } }
+
+// Pagination controls
+$("#pageSize").addEventListener("change", ()=>{ pageSize=+$("#pageSize").value; page=1; renderActiveView(); });
+$("#prevPage").addEventListener("click", ()=>{ page=Math.max(1,page-1); renderActiveView(); });
+$("#nextPage").addEventListener("click", ()=>{ const total=totalPagesForActiveView(); page=Math.min(total,page+1); renderActiveView(); });
+function totalPagesForActiveView(){
+  if(!currentRun) return 1;
+  if(currentView==='parents'){ const n=getFilteredSortedItems(true).length; return Math.max(1, Math.ceil(n/pageSize)); }
+  const n=getFilteredSortedComments(true).length; return Math.max(1, Math.ceil(n/pageSize));
+}
+
+// Run chooser
+$("#runBtnOpen").addEventListener("click", ()=>{ openRunMenu($("#runMenu").style.display!=="block"); });
+function openRunMenu(show=true){ const m=$("#runMenu"); if(!m) return; m.style.display = show?"block":"none"; if(show){ $("#runSearch").focus(); populateRunMenu(); } }
+document.addEventListener("click", (e)=>{ if(!e.target.closest(".run-chooser")) openRunMenu(false); });
+$("#runSearch").addEventListener("input", populateRunMenu);
+function populateRunMenu(){
+  const list=$("#runList"); list.innerHTML="";
+  const q=($("#runSearch").value||"").toLowerCase();
+  const arr=runs.filter(r=> runDesc(r).toLowerCase().includes(q));
+  if(arr.length===0){ list.innerHTML='<div class="small">No runs</div>'; return; }
+  arr.forEach(r=>{
+    const div=document.createElement("div"); div.className="run-item"; div.textContent=runDesc(r);
+    div.addEventListener("click", ()=>{ currentRun=r; $("#runBtnLabel").textContent=runDesc(r); openRunMenu(false); renderActiveView(); renderTelemetry(); });
+    list.appendChild(div);
+  });
+  if(currentRun){ $("#runBtnLabel").textContent = runDesc(currentRun); }
+}
+
+// Build CLI preview
+["topic","since","subs","ytMaxVideos","rdMaxPosts","redditSelector","redditQuery",
+ "ytComments","ytMinViews","rdComments","rdMinScore","lang","dedupe","redditSearchSort","redditSearchTime","redditTopTime"]
+.forEach(id => { const el=document.getElementById(id); if(el) el.addEventListener("input", updateCmd); });
+function buildCli(knobs){
+  const topic=(knobs.topic||"").replaceAll('"','\\"');
+  const ytFlags= knobs.connectors.youtube ?
+    ` --yt-videos ${knobs.advanced.yt.max_videos}` +
+    ` --yt-comments-per-video ${knobs.advanced.yt.comments_per_video}` +
+    ` --yt-min-views ${knobs.advanced.yt.min_views}` : "";
+  const rd=knobs.advanced.rd;
+  const rdFlags = ` --limit ${rd.max_posts}` +
+    ` --rd-comments-per-post ${rd.comments_per_post}` +
+    ` --rd-min-score ${rd.min_score}` +
+    ` --reddit-source ${rd.selector}` +
+    (rd.selector==='search' && rd.query ? ` --reddit-query ${JSON.stringify(rd.query)}`:"") +
+    (rd.selector==='search' ? ` --reddit-sort ${rd.search_sort} --reddit-t ${rd.search_time}`:"") +
+    (rd.selector==='top' ? ` --reddit-top-t ${rd.top_time}`:"");
+  const misc=` --lang ${knobs.advanced.language}` + (knobs.advanced.dedupe==='off'?` --no-dedupe`:"");
+  const subs=knobs.subreddits.join(",");
+  return `insight-mine collect --topic "${topic}" --since ${knobs.since} --subreddits "${subs}"${ytFlags}${rdFlags}${misc}`;
+}
+function updateCmd(){
+  const el = $("#cmd");
+  if (!el) return;
+  const cmd = buildCli(collectKnobs());
+  if ("value" in el) el.value = cmd; else el.textContent = cmd;
+}
+
+// Knobs
+function collectKnobs(){
+  return {
+    connectors:{ youtube:$("#enableYoutube").checked, reddit:$("#enableReddit").checked },
+    transcript_mode: $("#transcriptMode").value || "off",
+    topic: $("#topic").value || "",
+    since: $("#since").value,
+    subreddits: ($("#subs").value||"").split(",").map(s=>s.trim()).filter(Boolean),
+    advanced: {
+      language: $("#lang").value,
+      dedupe: $("#dedupe").value,
+      reddit_method: "scrape",
+      reddit_mode: "scrape",
+      rd: {
+        selector: $("#redditSelector").value,
+        query: $("#redditSelector").value==="search" ? ($("#redditQuery").value||"") : "",
+        search_sort: $("#redditSearchSort")?.value || "relevance",
+        search_time: $("#redditSearchTime")?.value || "all",
+        top_time: $("#redditTopTime")?.value || "week",
+        max_posts:+$("#rdMaxPosts").value, comments_per_post:+$("#rdComments").value, min_score:+$("#rdMinScore").value
+      },
+      yt: { max_videos:+$("#ytMaxVideos").value, comments_per_video:+$("#ytComments").value, min_views:+$("#ytMinViews").value }
+    }
+  };
+}
+
+// Parents filtered/sorted data
+function getKey(it, key){
+  switch(key){
+    case "platform": return it.platform;
+    case "title": return it.title||"";
+    case "author": return it.author||"";
+    case "context": return (it.platform==="youtube" ? (it.context?.channel||"") : (it.context?.subreddit||""));
+    case "metrics_score": return (it.platform==="youtube" ? (it.metrics?.likes||0):(it.metrics?.score||0));
+    case "metrics_replies": return (it.metrics?.replies||0);
+    case "metrics_views": return (it.metrics?.views||0);
+    case "created_at": return (new Date(it.created_at||0)).getTime();
+    default: return "";
+  }
+}
+function filtered(items){
+  let arr=items.slice();
+  if(platformSegParents!=="all") arr=arr.filter(i=>i.platform===platformSegParents);
+  if(filters.title) arr=arr.filter(i=> (i.title||"").toLowerCase().includes(filters.title.toLowerCase()));
+  if(filters.author) arr=arr.filter(i=> (i.author||"").toLowerCase().includes(filters.author.toLowerCase()));
+  if(filters.ctx) arr=arr.filter(i=>{
+    const ctx = i.platform==="youtube" ? (i.context?.channel||"") : (i.context?.subreddit||"");
+    return ctx.toLowerCase().includes(filters.ctx.toLowerCase());
+  });
+  if(filters.score) arr=arr.filter(i=> parseNumFilter(filters.score, i.platform==="youtube" ? (i.metrics?.likes||0) : (i.metrics?.score||0)));
+  if(filters.replies) arr=arr.filter(i=> parseNumFilter(filters.replies, i.metrics?.replies||0));
+  if(filters.views) arr=arr.filter(i=> parseNumFilter(filters.views, i.metrics?.views||0));
+  if(filters.date) arr=arr.filter(i=> (i.created_at||"").slice(0,7).includes(filters.date));
+  if(sortDir!=="none" && sortKey){
+    arr.sort((a,b)=>{
+      const va=getKey(a,sortKey), vb=getKey(b,sortKey);
+      if(va==null && vb==null) return 0;
+      if(va==null) return 1; if(vb==null) return -1;
+      if(typeof va==="number" && typeof vb==="number") return (sortDir==="asc"? va-vb : vb-va);
+      return (sortDir==="asc" ? (""+va).localeCompare(""+vb) : (""+vb).localeCompare(""+va));
+    });
+  }
+  return arr;
+}
+function getFilteredSortedItems(noPaging=false){
+  if(!currentRun) return [];
+  const arr=filtered(currentRun.manifest.items);
+  if(noPaging) return arr;
+  const totalPages=Math.max(1, Math.ceil(arr.length/pageSize));
+  page=Math.max(1, Math.min(page, totalPages));
+  const start=(page-1)*pageSize, end=start+pageSize;
+  $("#pageInfo").textContent=`Page ${page} / ${totalPages}`;
+  return arr.slice(start,end);
+}
+function getParentsSubset(){ return getFilteredSortedItems(true); }
+
+// Comments view
+function allCommentsOfRun(){
+  if(!currentRun) return [];
+  const rows=[];
+  currentRun.manifest.items.forEach(p=>{
+    (p.comments||[]).forEach(c=>{
+      rows.push({
+        platform:p.platform, text:c.text, author:c.author, authorUrl:c.authorUrl||"",
+        parentTitle:p.title||"", parentUrl:p.url,
+        ctx:(p.platform==="youtube" ? (p.context?.channel||"") : (p.context?.subreddit||"")),
+        ctxUrl:(p.platform==="youtube" ? (p.context?.channelUrl||"") : (p.context?.subredditUrl||"")),
+        likes:c.likes||0, date:c.created_at, url:(c.url||p.url), commentUrl: c.url || p.url
+      });
+    });
+  });
+  return rows;
+}
+function allCommentsOfParents(parents){
+  const rows=[];
+  parents.forEach(p=>{
+    (p.comments||[]).forEach(c=>{
+      rows.push({
+        platform:p.platform, text:c.text, author:c.author, authorUrl:c.authorUrl||"",
+        parentTitle:p.title||"", parentUrl:p.url,
+        ctx:(p.platform==="youtube" ? (p.context?.channel||"") : (p.context?.subreddit||"")),
+        ctxUrl:(p.platform==="youtube" ? (p.context?.channelUrl||"") : (p.context?.subredditUrl||"")),
+        likes:c.likes||0, date:c.created_at, url:c.url||p.url
+      });
+    });
+  });
+  return rows;
+}
+function allCommentsOfRunFilteredSorted(){
+  let rows=allCommentsOfRun();
+  if(platformSegComments!=="all") rows=rows.filter(r=>r.platform===platformSegComments);
+  const F=cFilters;
+  if(F.text) rows=rows.filter(r=> r.text.toLowerCase().includes(F.text.toLowerCase()));
+  if(F.author) rows=rows.filter(r=> (r.author||"").toLowerCase().includes(F.author.toLowerCase()));
+  if(F.parent) rows=rows.filter(r=> (r.parentTitle||"").toLowerCase().includes(F.parent.toLowerCase()));
+  if(F.ctx) rows=rows.filter(r=> (r.ctx||"").toLowerCase().includes(F.ctx.toLowerCase()));
+  if(F.likes) rows=rows.filter(r=> parseNumFilter(F.likes, r.likes||0));
+  if(F.date) rows=rows.filter(r=> (r.date||"").slice(0,7).includes(F.date));
+  if(cSort.dir!=="none" && cSort.key){
+    rows.sort((a,b)=>{
+      const key=cSort.key, dir=cSort.dir==="asc"?1:-1;
+      const get=(r)=>{
+        switch(key){
+          case "c_platform": return r.platform;
+          case "c_text": return r.text||"";
+          case "c_author": return r.author||"";
+          case "c_parent": return r.parentTitle||"";
+          case "c_ctx": return r.ctx||"";
+          case "c_likes": return r.likes||0;
+          case "c_date": return (new Date(r.date||0)).getTime();
+          default: return "";
+        }
+      };
+      const va=get(a), vb=get(b);
+      if(typeof va==="number" && typeof vb==="number") return (va-vb)*dir;
+      return (""+va).localeCompare(""+vb)*dir;
+    });
+  }
+  return rows;
+}
+function getFilteredSortedComments(noPaging=false){
+  let rows=allCommentsOfRunFilteredSorted();
+  if(noPaging) return rows;
+  const totalPages=Math.max(1, Math.ceil(rows.length/pageSize));
+  page=Math.max(1, Math.min(page, totalPages));
+  const start=(page-1)*pageSize, end=start+pageSize;
+  $("#pageInfo").textContent=`Page ${page} / ${totalPages}`;
+  return rows.slice(start,end);
+}
+
+// Render parents view
+function renderParentsRows(items){
+  const tb=$("#resultsBody"); tb.innerHTML="";
+  let i=0, n=items.length, batch=60;
+  function step(){
+    const frag=document.createDocumentFragment();
+    for(let j=0;j<batch && i<n;j++,i++){
+      const it=items[i]; const icon= it.platform==="youtube"?YT_ICON:RD_ICON;
+      const main=document.createElement("tr");
+      const trDot = it.platform==="youtube" ? `<span id="trdot-${it.id}" class="tr-dot${it.transcript?' on':''}" title="${it.transcript?'Transcript available':'No transcript'}"></span>` : '';
+      main.innerHTML=`
+        <td><button class="btn small" title="Expand" onclick="toggleDetails(this)">▸</button></td>
+        <td style="white-space:nowrap">${icon} ${it.platform}${trDot}</td>
+        <td class="compact-title" title="${escapeHtml(it.title||'')}">${escapeHtml(it.title||"(no title)")}</td>
+        <td class="compact-author">${authorLink(it)}</td>
+        <td class="compact-ctx">${ctxLink(it)}</td>
+        <td>${fmt(it.platform==="youtube" ? it.metrics?.likes : it.metrics?.score)}</td>
+        <td>${fmt((it.comments||[]).length || it.metrics?.replies)}</td>
+        <td>${fmt(it.metrics?.views)}</td>
+        <td>${(it.created_at||"").slice(0,10)}</td>
+        <td><a href="${it.url}" target="_blank" rel="noopener" title="${escapeHtml(it.url||'')}">Open</a></td>
+      `;
+      const det=document.createElement("tr"); det.className="details-row";
+      det.innerHTML = `<td colspan="10" class="details-cell">${renderDetails(it)}</td>`;
+      frag.appendChild(main); frag.appendChild(det);
+    }
+    tb.appendChild(frag);
+    if(i<n) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+// Custom autocomplete data store
+const acData = { title:[], author:[], ctx:[], c_author:[], c_parent:[], c_ctx:[] };
+
+// Build autocomplete data from current run
+function buildAutocompleteData(){
+  const run = window.currentRun || currentRun;
+  if(!run || !run.manifest || !run.manifest.items) return;
+  const items = run.manifest.items;
+  
+  const titles = new Set(), authors = new Set(), contexts = new Set();
+  const cAuthors = new Set(), cParents = new Set(), cContexts = new Set();
+  
+  items.forEach(it => {
+    if(it.title) { titles.add(it.title); cParents.add(it.title); }
+    if(it.author) authors.add(it.author);
+    const ctx = it.platform==="youtube" ? (it.context?.channel||"") : (it.context?.subreddit||"");
+    if(ctx) { contexts.add(ctx); cContexts.add(ctx); }
+    (it.comments||[]).forEach(c => { if(c.author) cAuthors.add(c.author); });
+  });
+  
+  acData.title = [...titles].sort();
+  acData.author = [...authors].sort();
+  acData.ctx = [...contexts].sort();
+  acData.c_author = [...cAuthors].sort();
+  acData.c_parent = [...cParents].sort();
+  acData.c_ctx = [...cContexts].sort();
+}
+
+// Populate filter autocomplete suggestions - called after render
+function populateFilterSuggestions(){ buildAutocompleteData(); }
+
+// Custom autocomplete logic
+function setupAutocomplete(inputId, dropdownId, dataKey){
+  const inp = document.getElementById(inputId);
+  const dd = document.getElementById(dropdownId);
+  if(!inp || !dd) return;
+  let selIdx = -1;
+  let skipNextShow = false;
+  
+  // Position dropdown using fixed positioning to avoid clipping by parent overflow
+  const positionDropdown = () => {
+    const rect = inp.getBoundingClientRect();
+    dd.style.position = "fixed";
+    dd.style.left = rect.left + "px";
+    dd.style.top = (rect.bottom + 2) + "px";
+    dd.style.minWidth = rect.width + "px";
+  };
+  
+  const show = () => {
+    if(skipNextShow){ skipNextShow = false; return; }
+    const val = inp.value.toLowerCase().trim();
+    const matches = val ? acData[dataKey].filter(v => v.toLowerCase().includes(val)).slice(0,20) : [];
+    dd.innerHTML = "";
+    if(matches.length === 0){
+      dd.classList.remove("show");
+      return;
+    }
+    matches.forEach((m,i) => {
+      const div = document.createElement("div");
+      div.className = "ac-item" + (i===selIdx?" selected":"");
+      div.textContent = m;
+      div.addEventListener("mousedown", e => { e.preventDefault(); skipNextShow = true; inp.value = m; dd.classList.remove("show"); inp.dispatchEvent(new Event("input",{bubbles:true})); });
+      dd.appendChild(div);
+    });
+    positionDropdown();
+    dd.classList.add("show");
+  };
+  
+  const scrollToSelected = () => {
+    const sel = dd.querySelector(".ac-item.selected");
+    if(sel) sel.scrollIntoView({block:"nearest"});
+  };
+  
+  inp.addEventListener("input", () => { selIdx = -1; show(); });
+  inp.addEventListener("focus", show);
+  inp.addEventListener("blur", () => setTimeout(() => dd.classList.remove("show"), 150));
+  inp.addEventListener("keydown", e => {
+    const items = dd.querySelectorAll(".ac-item");
+    if(e.key === "Escape"){ dd.classList.remove("show"); return; }
+    if(!items.length) return;
+    if(e.key === "ArrowDown"){ e.preventDefault(); selIdx = Math.min(selIdx+1, items.length-1); show(); scrollToSelected(); }
+    else if(e.key === "ArrowUp"){ e.preventDefault(); selIdx = Math.max(selIdx-1, 0); show(); scrollToSelected(); }
+    else if(e.key === "Enter" && selIdx >= 0){ e.preventDefault(); skipNextShow = true; inp.value = items[selIdx].textContent; dd.classList.remove("show"); inp.dispatchEvent(new Event("input",{bubbles:true})); }
+  });
+}
+
+// Initialize all autocomplete fields (defer to ensure DOM ready)
+function initAutocomplete(){
+  setupAutocomplete("f_title", "ac_title", "title");
+  setupAutocomplete("f_author", "ac_author", "author");
+  setupAutocomplete("f_ctx", "ac_ctx", "ctx");
+  setupAutocomplete("cf_author", "ac_c_author", "c_author");
+  setupAutocomplete("cf_parent", "ac_c_parent", "c_parent");
+  setupAutocomplete("cf_ctx", "ac_c_ctx", "c_ctx");
+}
+if(document.readyState === "loading"){ document.addEventListener("DOMContentLoaded", initAutocomplete); }
+else { initAutocomplete(); }
+
+function renderResults(){
+  populateFilterSuggestions();
+  updateInlineMetrics();
+  updateSortIndicatorsParents();
+  const items=getFilteredSortedItems();
+  renderParentsRows(items);
+  const total=currentRun?currentRun.manifest.items.length:0;
+  const filteredCount=getFilteredSortedItems(true).length;
+  $("#rowCount").textContent = `Filtered ${filteredCount} / Total ${total} — Showing ${(items.length?((page-1)*pageSize+1):0)}–${((page-1)*pageSize+items.length)}`;
+  updateExportMeta();
+}
+
+// Details helpers
+function authorLink(it){
+  if(it.platform==="youtube"){
+    const name=escapeHtml(it.author||""); const url=it.authorUrl || (it.context?.channelUrl);
+    return url?`<a href="${url}" target="_blank" rel="noopener" title="Open channel: ${escapeHtml(url)}">${name}</a>`:name;
+  } else {
+    const name=escapeHtml(it.author||"");
+    const url=it.authorUrl || (name ? `https://www.reddit.com/user/${name.replace(/^u_/,'')}` : "");
+    return url?`<a href="${url}" target="_blank" rel="noopener" title="Open profile: ${escapeHtml(url)}">${name}</a>`:name;
+  }
+}
+function ctxLink(it){
+  if(it.platform==="youtube"){
+    const ch=escapeHtml(it.context?.channel || ""); const url=it.context?.channelUrl || (ch?`https://www.youtube.com/@${ch}`:"");
+    return url?`<a href="${url}" target="_blank" rel="noopener" title="Open channel: ${escapeHtml(url)}">${ch}</a>`:ch;
+  } else {
+    const sub=escapeHtml(it.context?.subreddit || ""); const clean=sub.replace(/^r\//,"");
+    const url=it.context?.subredditUrl || (sub?`https://www.reddit.com/r/${clean}`:"");
+    return url?`<a href="${url}" target="_blank" rel="noopener" title="Open subreddit: ${escapeHtml(url)}">${sub}</a>`:sub;
+  }
+}
+
+function renderDetails(it){
+  // Use data attribute for ID to avoid escaping issues in onclick
+  const defaultTrMode = (currentRun?.manifest?.knobs?.transcript_mode) || "free";
+  const transcriptBtn = (it.platform==="youtube") ?
+    `<div class="row nowrap transcript-fetch-row" style="gap:6px;margin-top:10px;align-items:center">
+        <select class="select compact transcript-mode-select" title="Transcript mode">
+          <option value="free" ${defaultTrMode==="free"?"selected":""}>Free</option>
+          <option value="any" ${defaultTrMode==="any"?"selected":""}>Any (free→paid)</option>
+        </select>
+        <button class="btn small transcript-fetch-btn" data-video-id="${escapeHtml(it.id)}">Fetch transcript${it.transcript?' (refetch)':''}</button>
+      </div>` : "";
+
+  const transcriptBlock = `<div id="tr-${it.id}" class="card copy-wrap" style="margin-top:8px; display:${(it.transcript||'')?'block':'none'}">
+      <div class="small" style="padding-right:36px">Transcript</div>
+      <div class="resizable mono copy-target" id="tr-text-${it.id}" data-capvh="50" style="text-align:left">${escapeHtml(formatTranscript(it.transcript||""))}</div>
+      <button class="copy-btn" type="button" onclick="copyFromSibling(this)" title="Copy transcript">⧉</button>
+      <div id="tr-err-${it.id}" class="small err" style="display:none"></div>
+    </div>`;
+
+  const comments = (it.comments||[]).map(c=>`
+    <div class="card" style="margin:6px 0">
+      <div class="small" style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap">
+        <div>${c.authorUrl?`<a href="${c.authorUrl}" target="_blank" rel="noopener" title="Open ${escapeHtml(c.author)}'s profile">${escapeHtml(c.author)}</a>`:escapeHtml(c.author)}
+            • ${c.created_at.slice(0,10)}</div>
+        <div class="row">
+          <span>likes: ${fmt(c.likes)}</span>
+          <a href="${c.url}" target="_blank" rel="noopener" title="${escapeHtml(c.url||'')}">${(c.url||"").includes("reddit.com") ? "Open comment" : ((c.url||"").includes("&lc=") ? "Open comment" : "Open video")}</a>
+        </div>
+      </div>
+      <div class="copy-wrap">
+        <div class="resizable mono copy-target" style="text-align:left">${escapeHtml(c.text)}</div>
+        <button class="copy-btn" type="button" onclick="copyFromSibling(this)" title="Copy comment">⧉</button>
+      </div>
+    </div>`).join("");
+
+  // Duration badge for YouTube videos
+  const durSec = it.platform==="youtube" ? (it.context?.duration_sec || 0) : 0;
+  const durBadge = durSec > 0 ? `<span class="tag" style="margin-left:8px" title="Video duration">${fmtDuration(durSec)}</span>` : "";
+  
+  const html = `
+    <div class="row" style="gap:10px;align-items:flex-start;flex-wrap:wrap">
+      <div style="flex:1;min-width:260px">
+        <div class="card copy-wrap">
+          <div class="small" style="display:flex;align-items:center">Main${durBadge}</div>
+          <div class="resizable mono copy-target" style="text-align:left">${escapeHtml((it.text||""))}</div>
+          <button class="copy-btn" type="button" onclick="copyFromSibling(this)" title="Copy post text">⧉</button>
+        </div>
+        ${transcriptBtn}
+        ${transcriptBlock}
+      </div>
+      <div style="flex:1;min-width:260px">
+        <div class="accordion">
+          <div class="acc-h" style="justify-content:center;gap:8px;align-items:center" onclick="toggleAcc(this)">
+            <strong>Comments</strong>
+            <span class="small">(${(it.comments||[]).length})</span>
+            <span>▼</span>
+          </div>
+          <div class="acc-c">${comments || '<div class="small">No comments</div>'}</div>
+        </div>
+      </div>
+    </div>`;
+
+  return html;
+}
+function toggleDetails(btn){
+  const tr=btn.closest("tr"); const next=tr.nextElementSibling;
+  const isOpen = next.style.display==="table-row";
+  next.style.display = isOpen ? "none":"table-row";
+  btn.textContent = isOpen ? "▸":"▾";
+  $all(".resizable", next).forEach(el=> ensureSized(el));
+}
+function toggleAcc(h){
+  const c=h.nextElementSibling;
+  c.style.display = c.style.display==="block" ? "none" : "block";
+  h.querySelector("span:last-child").textContent = c.style.display==="block" ? "▲" : "▼";
+  $all(".resizable", c).forEach(el=> ensureSized(el));
+}
+
+// Transcript fetch (scrollable) - uses window.currentRun for pywebview compatibility
+function fetchTranscript(id, btn, modeOverride){
+  // Visual debug: show we entered the function
+  const orig = btn ? btn.textContent : "Fetch";
+  if(btn){ btn.textContent="[1] Starting..."; btn.disabled=true; }
+  
+  const selectVal = btn && btn.closest('.transcript-fetch-row')?.querySelector('.transcript-mode-select');
+  const mode = modeOverride || (selectVal ? selectVal.value : "free") || "free";
+  console.log("[IM] fetchTranscript mode (ui) =", mode);
+
+  const run = window.currentRun || currentRun;
+  if(!run) { 
+    if(btn){ btn.textContent="ERR: No run"; btn.style.background="#f99"; }
+    setTimeout(()=>{ if(btn){ btn.textContent=orig; btn.disabled=false; btn.style.background=""; }}, 3000);
+    return; 
+  }
+  if(btn){ btn.textContent="[2] Found run..."; }
+  
+  const it=(run.manifest?.items||[]).find(x=>x.id===id); 
+  if(!it) { 
+    if(btn){ btn.textContent="ERR: No item"; btn.style.background="#f99"; }
+    setTimeout(()=>{ if(btn){ btn.textContent=orig; btn.disabled=false; btn.style.background=""; }}, 3000);
+    return; 
+  }
+  if(btn){ btn.textContent="[3] Found item..."; }
+  
+  if(it.transcript){ 
+    if(btn){ btn.textContent=orig; btn.disabled=false; }
+    const ok=confirm("Transcript already exists. Re‑fetch from source?"); 
+    if(!ok) return; 
+    if(btn){ btn.textContent="[3b] Re-fetching..."; btn.disabled=true; }
+  }
+  
+  const block=document.getElementById("tr-"+id);
+  const textEl=document.getElementById("tr-text-"+id);
+  const errEl=document.getElementById("tr-err-"+id);
+  if(errEl){ errEl.style.display="none"; errEl.textContent=""; }
+  
+  // Check if pywebview bridge is available
+  const hasBridge = !!(window.pywebview && window.pywebview.api && window.pywebview.api.fetch_transcript);
+  if(btn){ btn.textContent = hasBridge ? "[4] Calling API..." : "[4] No bridge, mock..."; }
+  
+  if(hasBridge){
+    const runId = run.id || '';
+    window.pywebview.api.fetch_transcript(id, runId, 'en', mode).then(result => {
+      if(btn){ btn.textContent="[5] Got result..."; }
+      if(result && result.ok){
+        it.transcript = result.text;
+        if(block){ block.style.display="block"; }
+        if(textEl){ textEl.textContent=result.text; ensureSized(textEl); }
+        if(btn){ btn.textContent=orig.replace('Fetch','Refetch'); btn.disabled=false; btn.style.background="#9f9"; }
+        setTimeout(()=>{ if(btn) btn.style.background=""; }, 2000);
+      } else {
+        const errMsg = (result && result.error) || 'Failed to fetch transcript';
+        if(errEl){ errEl.style.display="block"; errEl.textContent=errMsg; }
+        if(btn){ btn.textContent="ERR: "+errMsg.slice(0,20); btn.style.background="#f99"; }
+        setTimeout(()=>{ if(btn){ btn.textContent=orig; btn.disabled=false; btn.style.background=""; }}, 5000);
+      }
+    }).catch(e => {
+      const errMsg = String(e);
+      if(errEl){ errEl.style.display="block"; errEl.textContent='Error: '+errMsg; }
+      if(btn){ btn.textContent="CATCH: "+errMsg.slice(0,15); btn.style.background="#f99"; }
+      setTimeout(()=>{ if(btn){ btn.textContent=orig; btn.disabled=false; btn.style.background=""; }}, 5000);
+    });
+    return;
+  }
+  
+  // Fallback: mock data for standalone HTML
+  setTimeout(()=>{
+    const txt=fakeTranscript(); it.transcript=txt;
+    if(block){ block.style.display="block"; }
+    if(textEl){ textEl.textContent=txt; ensureSized(textEl); }
+    if(btn){ btn.textContent=orig; btn.disabled=false; }
+  }, 500);
+}
+
+// Comments view render
+function renderCommentsTable(){
+  populateFilterSuggestions();
+  updateSortIndicatorsComments();
+  const tb=$("#commentsBody"); tb.innerHTML="";
+  const rows=getFilteredSortedComments(); let i=0, n=rows.length, batch=80;
+  function step(){
+    const frag=document.createDocumentFragment();
+    for(let j=0;j<batch && i<n;j++,i++){
+      const r=rows[i]; const icon=r.platform==="youtube"?YT_ICON:RD_ICON;
+      const tr=document.createElement("tr");
+      tr.innerHTML = `
+        <td>${icon} ${r.platform}</td>
+        <td class="comment-cell">
+          <div class="copy-wrap">
+            <div class="resizable mono copy-target copy-top-left" data-no-title>${escapeHtml(r.text)}</div>
+            <button class="copy-btn top-left" type="button" onclick="copyFromSibling(this)" title="Copy comment">⧉</button>
+          </div>
+        </td>
+        <td>${r.authorUrl?`<a href="${r.authorUrl}" target="_blank" rel="noopener">${escapeHtml(r.author||"")}</a>`:escapeHtml(r.author||"")}</td>
+        <td title="${escapeHtml(r.parentTitle)}"><a href="${r.parentUrl}" target="_blank" rel="noopener">${escapeHtml((r.parentTitle||"").slice(0,80))}${(r.parentTitle||"").length>80?"…":""}</a></td>
+        <td>${r.ctx ? (r.ctxUrl?`<a href="${r.ctxUrl}" target="_blank" rel="noopener">${escapeHtml(r.ctx)}</a>`:escapeHtml(r.ctx)):""}</td>
+        <td>${fmt(r.likes)}</td>
+        <td>${(r.date||"").slice(0,10)}</td>
+        <td><a href="${r.commentUrl||r.url}" target="_blank" rel="noopener">Comment</a></td>`;
+      frag.appendChild(tr);
+      // Ensure no titles linger to show tooltips
+      tr.querySelectorAll("[title]").forEach(el=>{ if(el.getAttribute("title")==="") el.removeAttribute("title"); });
+    }
+    tb.appendChild(frag);
+    if(i<n) requestAnimationFrame(step);
+    else {
+      const total=allCommentsOfRun().length, filteredTotal=getFilteredSortedComments(true).length;
+      $("#commentsCount").textContent = `Filtered ${filteredTotal} / Total ${total} comments — Showing ${(rows.length?((page-1)*pageSize+1):0)}–${((page-1)*pageSize+rows.length)}`;
+      updateExportMeta();
+      $all("#commentsBody .resizable").forEach(el=> ensureSized(el));
+    }
+  }
+  requestAnimationFrame(step);
+}
+
+// Export buttons
+$("#exportJSON").addEventListener("click", ()=>{
+  if(!currentRun) return alert("Run first.");
+  if(currentView==="parents"){
+    const mode=$("#exportMode").value || "parents+comments";
+    const parents=getParentsSubset();
+    if(mode==="parents-only"){
+      const stripped = parents.map(p=>{ const {comments, ...rest}=p; return rest; });
+      exportJSON("parents.json", stripped);
+      showToast(`Exported ${stripped.length} parents`);
+    } else {
+      exportJSON("parents_with_comments.json", parents); // includes transcripts if present
+      const rows=allCommentsOfParents(parents);
+      exportJSON("comments.json", rows);
+      showToast(`Exported parents_with_comments.json + comments.json`);
+    }
+  } else {
+    const rows=getFilteredSortedComments(true);
+    exportJSON("comments.json", rows);
+    showToast(`Exported ${rows.length} comments`);
+  }
+});
+$("#exportCSV").addEventListener("click", ()=>{
+  if(!currentRun) return alert("Run first.");
+  if(currentView==="parents"){
+    const mode=$("#exportMode").value || "parents+comments";
+    const parents=getParentsSubset();
+    exportCSVParents("parents.csv", parents); // includes transcript column
+    if(mode==="parents+comments"){
+      const rows=allCommentsOfParents(parents);
+      exportCSVComments("comments.csv", rows);
+      showToast(`Exported parents.csv and comments.csv`);
+    } else {
+      showToast(`Exported parents.csv`);
+    }
+  } else {
+    const rows=getFilteredSortedComments(true);
+    exportCSVComments("comments.csv", rows);
+    showToast(`Exported ${rows.length} comments to comments.csv`);
+  }
+});
+
+// Paste modal
+$("#openPaste").addEventListener("click", ()=>{
+  renderPaste("subset");
+  $("#modalPaste").style.display="block"; // visible first for correct sizing
+  const pre=$("#pastePre");
+  requestAnimationFrame(()=>{ ensureSized(pre); pre.scrollTop=0; });
+});
+function closePaste(){ $("#modalPaste").style.display="none" }
+function pasteFileName(){ const mode=document.querySelector("#pasteSeg .active")?.dataset.val || "subset"; return mode==="subset" ? "paste-subset.txt" : "paste-all.txt"; }
+(function(){
+  const seg=document.getElementById("pasteSeg");
+  seg.addEventListener("click", (e)=>{
+    const b=e.target.closest("button"); if(!b) return;
+    $all("#pasteSeg button").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active");
+    renderPaste(b.dataset.val);
+    const pre=$("#pastePre"); requestAnimationFrame(()=> ensureSized(pre));
+  });
+})();
+
+// Paste builders
+function buildPasteParentsOnly(parents){
+  return parents.map(it=>{
+    let s=pasteLine(it);
+    if((it.transcript||"").trim()){
+      s += "\n\nTranscript:\n" + it.transcript.trim();
+    }
+    return s;
+  }).join("\n\n---\n\n");
+}
+function buildPasteParentsPlusComments(parents){
+  return parents.map(it=>{
+    let s=pasteLine(it);
+    if((it.transcript||"").trim()){
+      s += "\n\nTranscript:\n" + it.transcript.trim();
+    }
+    if((it.comments||[]).length){
+      s += `\n\nComments (${it.comments.length}):\n` + it.comments.map(c=> `• ${c.author}: ${c.text}${c.url?`\n  ${c.url}`:""}`).join("\n");
+    } else {
+      s += `\n\nComments: 0`;
+    }
+    return s;
+  }).join("\n\n---\n\n");
+}
+function buildPasteFromComments(rows){ return rows.map(r=>`[${r.platform}] ${r.text} — ${r.parentTitle}\n${r.url}`).join("\n\n---\n\n"); }
+
+function renderPaste(mode){
+  if(!currentRun){ $("#pastePre").textContent="(run first)"; $("#pasteMeta").textContent=""; return; }
+  let text="", meta="";
+  if(mode==="subset"){
+    if(currentView==="parents"){
+      const parents=getParentsSubset(); const total=currentRun.manifest.items.length;
+      const exportMode=$("#exportMode").value || "parents+comments";
+      text = exportMode==="parents+comments" ? buildPasteParentsPlusComments(parents) : buildPasteParentsOnly(parents);
+      meta = `Subset (${parents.length} of ${total} items) — ${exportMode.replace('+',' + ')}`;
+    } else {
+      const rows=getFilteredSortedComments(true); const total=allCommentsOfRun().length;
+      text=buildPasteFromComments(rows); meta=`Subset (${rows.length} of ${total} comments)`;
+    }
+  } else {
+    // "All" uses parents only with their own transcripts (no global comments flatten to keep size predictable)
+    const parents=currentRun.manifest.items;
+    const exportMode=$("#exportMode").value || "parents+comments";
+    text = exportMode==="parents+comments" ? buildPasteParentsPlusComments(parents) : buildPasteParentsOnly(parents);
+    meta=`All (${parents.length} items) — ${exportMode.replace('+',' + ')}`;
+  }
+  $("#pastePre").textContent = text || "(empty)";
+  $("#pasteMeta").textContent = meta;
+}
+
+function getCurrentSubset(){
+  if(!currentRun) return { arr: [], total: 0 };
+  if(currentView==="parents"){
+    const arr=getParentsSubset(); const total=currentRun.manifest.items.length; return { arr, total };
+  } else {
+    const rows=getFilteredSortedComments(true); const total=allCommentsOfRun().length; return { arr:rows, total };
+  }
+}
+
+// Export utilities
+function exportJSON(name, items){ const blob=new Blob([JSON.stringify(items,null,2)], {type:"application/json"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; a.click(); URL.revokeObjectURL(a.href); }
+function exportCSVParents(name, items){
+  const cols=["platform","title","author","context","score_or_likes","replies","views","created_at","url","transcript"];
+  const rows=[cols.join(",")];
+  items.forEach(it=>{
+    const ctx= it.platform==="youtube" ? (it.context?.channel||"") : (it.context?.subreddit||"");
+    const score= it.platform==="youtube" ? (it.metrics?.likes||0) : (it.metrics?.score||0);
+    const line=[
+      it.platform, (it.title||"").replaceAll('"','""'),
+      (it.author||"").replaceAll('"','""'),
+      ctx.replaceAll('"','""'),
+      score, it.metrics?.replies||0, it.metrics?.views||"", it.created_at||"", it.url,
+      (it.transcript||"").replaceAll('"','""')
+    ].map(v=> typeof v === "string" ? `"${v}"` : v).join(",");
+    rows.push(line);
+  });
+  const blob=new Blob([rows.join("\n")], {type:"text/csv"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; a.click(); URL.revokeObjectURL(a.href);
+}
+function exportCSVComments(name, items){
+  const cols=["platform","comment","author","parent_title","context","likes_or_score","date","url"];
+  const rows=[cols.join(",")];
+  items.forEach(r=>{
+    const line=[
+      r.platform, (r.text||"").replaceAll('"','""'), (r.author||"").replaceAll('"','""'),
+      (r.parentTitle||"").replaceAll('"','""'),
+      (r.ctx||"").replaceAll('"','""'),
+      r.likes||0, r.date||"", r.url
+    ].map(v=> typeof v === "string" ? `"${v}"` : v).join(",");
+    rows.push(line);
+  });
+  const blob=new Blob([rows.join("\n")], {type:"text/csv"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; a.click(); URL.revokeObjectURL(a.href);
+}
+function downloadText(name, text){ const blob=new Blob([text||""], {type:"text/plain"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; a.click(); URL.revokeObjectURL(a.href); }
+
+// Telemetry
+function renderTelemetry(){
+  if(!currentRun){ $("#keptT").innerHTML=""; $("#dropT").innerHTML=""; return; }
+  $("#keptT").innerHTML = `
+    <tr><td>YouTube</td><td>${fmt(currentRun.manifest.items.filter(i=>i.platform==='youtube').length)}</td></tr>
+    <tr><td>Reddit</td><td>${fmt(currentRun.manifest.items.filter(i=>i.platform==='reddit').length)}</td></tr>`;
+  $("#dropT").innerHTML = `
+    <tr><td>low_views</td><td>${fmt(currentRun.stats.dropped.low_views)}</td></tr>
+    <tr><td>low_score</td><td>${fmt(currentRun.stats.dropped.low_score)}</td></tr>
+    <tr><td>lang_mismatch</td><td>${fmt(currentRun.stats.dropped.lang_mismatch)}</td></tr>`;
+  updateInlineMetrics();
+}
+function updateInlineMetrics(){
+  const wrap=$("#inlineMetrics"); if(!wrap) return; wrap.innerHTML="";
+  if(!currentRun) return;
+  const items=filtered(currentRun.manifest.items);
+  const yt=items.filter(i=>i.platform==='youtube');
+  const rd=items.filter(i=>i.platform==='reddit');
+  const comments=items.reduce((a,i)=> a+(i.comments?.length||0),0);
+  const drops=currentRun.stats.dropped;
+  const mk=(label,val)=> `<span class="metric"><b>${fmt(val)}</b> ${label}</span>`;
+  wrap.innerHTML = [ mk("items", items.length), mk("YouTube", yt.length), mk("Reddit", rd.length), mk("comments", comments), mk("dropped", (drops.low_views + drops.low_score + drops.lang_mismatch)) ].join(" ");
+}
+function updateExportMeta(){
+  if(!currentRun){ $("#exportMeta").textContent=""; return; }
+  if(currentView==='parents'){ const n=getFilteredSortedItems(true).length; const total=currentRun.manifest.items.length; $("#exportMeta").textContent=`Subset: ${n} of ${total} items`; }
+  else { const n=getFilteredSortedComments(true).length; const total=allCommentsOfRun().length; $("#exportMeta").textContent=`Subset: ${n} of ${total} comments`; }
+}
+
+// ---------- Visibility-aware sizing ----------
+function ensureSized(el){ if(!el) return; if(el.getClientRects().length===0){ requestAnimationFrame(()=> ensureSized(el)); return; } bindResizable(el, true); }
+function bindResizable(el, reset=false){
+  if(!el) return;
+  if(el.dataset.userResized && !reset) return;
+  const hasText = /\S/.test((el.textContent||"") + (el.value||""));
+  const baseMin = parseInt(el.getAttribute("data-min")||"0", 10) || 0;
+  const capvh = parseInt(el.getAttribute("data-capvh")||"33", 10);
+  const cap = Math.floor(window.innerHeight * (capvh/100));
+  const maxH = Math.floor(window.innerHeight*0.85);
+  el.style.maxHeight = maxH + "px";
+  if(hasText){
+    const target = Math.min(el.scrollHeight, cap);
+    el.style.minHeight = "0px";
+    el.style.height = Math.max(0, target) + "px";
+  } else {
+    const h = Math.max(baseMin, 120);
+    el.style.minHeight = h + "px";
+    el.style.height = h + "px";
+  }
+  if(!el.dataset._bind){
+    el.addEventListener("mousedown", ()=>{ el.dataset.resizing="1"; });
+    el.addEventListener("mouseup", ()=>{ if(el.dataset.resizing){ el.dataset.userResized="1"; delete el.dataset.resizing; } });
+    el.dataset._bind="1";
+  }
+}
+
+// Event delegation for transcript fetch buttons (avoids inline onclick escaping issues)
+document.addEventListener('click', function(e) {
+  const btn = e.target.closest('.transcript-fetch-btn');
+  if (!btn) return;
+  const videoId = btn.dataset.videoId;
+  if (videoId) {
+    fetchTranscript(videoId, btn);
+  }
+});
+</script>
+</body>
+</html>

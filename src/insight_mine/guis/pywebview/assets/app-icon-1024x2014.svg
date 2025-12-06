@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="2014" viewBox="0 0 1024 2014" role="img" aria-label="Insight Mine brain-circuit icon">
+  <defs>
+    <style>
+      :root {
+        --bg: #0b0d10;
+        --panel: #0f141b;
+        --border: #253244;
+        --brand: #60a5fa;
+        --accent: #93c5fd;
+        --muted: #93a4b8;
+        --node: #22c55e;
+      }
+    </style>
+    <radialGradient id="glow" cx="50%" cy="18%" r="46%">
+      <stop offset="0%" stop-color="var(--brand)" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="var(--brand)" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect x="0" y="0" width="1024" height="2014" rx="140" fill="var(--bg)"/>
+  <rect x="64" y="64" width="896" height="1886" rx="120" fill="var(--panel)" stroke="var(--border)" stroke-width="8"/>
+  <ellipse cx="512" cy="360" rx="360" ry="280" fill="url(#glow)"/>
+
+  <!-- Brain backdrop -->
+  <rect x="210" y="420" width="604" height="1160" rx="180" fill="#111826"/>
+
+  <!-- Spine -->
+  <line x1="512" y1="560" x2="512" y2="1410" stroke="var(--brand)" stroke-width="22" stroke-linecap="round"/>
+
+  <!-- Branches -->
+  <g stroke="var(--brand)" stroke-width="18" stroke-linecap="round" fill="none">
+    <path d="M512 760 H310 V600"/>
+    <path d="M512 760 H714 V600"/>
+    <path d="M512 1080 H280 V1240"/>
+    <path d="M512 1080 H744 V1240"/>
+  </g>
+
+  <!-- Branch nodes -->
+  <g fill="var(--accent)">
+    <circle cx="310" cy="600" r="14"/>
+    <circle cx="714" cy="600" r="14"/>
+    <circle cx="280" cy="1240" r="14"/>
+    <circle cx="744" cy="1240" r="14"/>
+  </g>
+  <g fill="var(--brand)">
+    <circle cx="310" cy="760" r="12"/>
+    <circle cx="714" cy="760" r="12"/>
+    <circle cx="280" cy="1080" r="12"/>
+    <circle cx="744" cy="1080" r="12"/>
+  </g>
+
+  <!-- Lower arcs + lobe nodes -->
+  <path d="M120 1320 C240 1380 360 1420 512 1420 C664 1420 784 1380 904 1320" stroke="var(--brand)" stroke-width="18" stroke-linecap="round" fill="none"/>
+  <g fill="var(--node)">
+    <circle cx="220" cy="1340" r="14"/>
+    <circle cx="340" cy="1380" r="14"/>
+    <circle cx="684" cy="1380" r="14"/>
+    <circle cx="804" cy="1340" r="14"/>
+  </g>
+
+  <!-- Data sparks -->
+  <g fill="var(--accent)">
+    <circle cx="320" cy="520" r="9"/>
+    <circle cx="704" cy="560" r="9"/>
+    <circle cx="392" cy="720" r="9"/>
+    <circle cx="648" cy="780" r="9"/>
+    <circle cx="360" cy="1140" r="9"/>
+    <circle cx="684" cy="1180" r="9"/>
+  </g>
+
+  <!-- Magnifier -->
+  <g transform="translate(640 1640)">
+    <circle cx="0" cy="0" r="140" fill="var(--panel)" stroke="var(--accent)" stroke-width="18"/>
+    <circle cx="0" cy="0" r="70" fill="none" stroke="var(--brand)" stroke-width="8"/>
+    <line x1="0" y1="-70" x2="0" y2="70" stroke="var(--accent)" stroke-width="8" stroke-linecap="round"/>
+    <line x1="-70" y1="0" x2="70" y2="0" stroke="var(--accent)" stroke-width="8" stroke-linecap="round"/>
+    <path d="M70 70 L170 170" stroke="var(--brand)" stroke-width="18" stroke-linecap="round"/>
+    <circle cx="170" cy="170" r="18" fill="var(--brand)"/>
+  </g>
+
+  <!-- Footer bars -->
+  <rect x="184" y="1760" width="656" height="62" rx="22" fill="#131a23" stroke="var(--border)" stroke-width="6"/>
+  <rect x="184" y="1660" width="320" height="52" rx="20" fill="#131a23" stroke="var(--border)" stroke-width="6"/>
+</svg>
+
+
+
+

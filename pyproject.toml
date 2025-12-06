@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "insight-mine"
+version = "0.2.0"
+description = "Personal-use CLI to collect Reddit/YouTube data and produce paste-ready text for LLM insights."
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "Your Name" }]
+dependencies = [
+  "google-api-python-client>=2.142.0",
+  "praw==7.7.1",
+  "keyring>=25.0.0",
+  "tqdm>=4.66.0",
+  "python-dateutil>=2.9.0",
+  "orjson>=3.10.0",
+  "requests>=2.31.0",
+  "langdetect>=1.0.9",
+  "youtube-transcript-api>=0.6.2",
+  "pytest>=8.0.0",
+]
+
+[project.scripts]
+insight-mine = "insight_mine.cli:main"
+insight-mine-gui = "insight_mine.guis.pywebview.app:main"
+
+[project.optional-dependencies]
+gui = [
+  "pywebview>=4.4",
+  "python-dotenv>=1.0",
+  "requests>=2.31",
+  "psutil>=5.9",
+  "rich>=13",
+  "pydantic>=2",
+]
+packaging = [
+  "pillow>=10.3",
+  "pyinstaller>=6.11",
+  "pyinstaller-hooks-contrib>=2024.10",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+addopts = "-q"

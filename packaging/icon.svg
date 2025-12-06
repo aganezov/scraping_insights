@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="Insight Mine macOS icon (brain circuit)">
+  <defs>
+    <style>
+      :root {
+        --bg: #0b0d10;
+        --panel: #0f141b;
+        --border: #253244;
+        --brand: #60a5fa;
+        --accent: #93c5fd;
+        --node: #22c55e;
+      }
+    </style>
+    <radialGradient id="glow" cx="50%" cy="16%" r="45%">
+      <stop offset="0%" stop-color="var(--brand)" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="var(--brand)" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect x="0" y="0" width="1024" height="1024" rx="180" fill="var(--bg)"/>
+  <rect x="64" y="64" width="896" height="896" rx="140" fill="var(--panel)" stroke="var(--border)" stroke-width="10"/>
+  <ellipse cx="512" cy="240" rx="360" ry="260" fill="url(#glow)"/>
+
+  <!-- Magnifier only -->
+  <g transform="translate(512 520)">
+    <circle cx="0" cy="0" r="240" fill="var(--panel)" stroke="var(--accent)" stroke-width="18"/>
+    <circle cx="0" cy="0" r="130" fill="none" stroke="var(--brand)" stroke-width="14"/>
+    <line x1="0" y1="-130" x2="0" y2="130" stroke="var(--accent)" stroke-width="14" stroke-linecap="round"/>
+    <line x1="-130" y1="0" x2="130" y2="0" stroke="var(--accent)" stroke-width="14" stroke-linecap="round"/>
+    <path d="M132 132 L260 260" stroke="var(--brand)" stroke-width="22" stroke-linecap="round"/>
+    <circle cx="260" cy="260" r="22" fill="var(--brand)"/>
+    <path d="M-50 -200 A220 220 0 0 1 200 -50" stroke="var(--accent)" stroke-width="10" fill="none" stroke-linecap="round"/>
+  </g>
+</svg>
+
