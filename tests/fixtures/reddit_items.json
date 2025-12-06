@@ -1,0 +1,39 @@
+[
+  {
+    "platform": "reddit",
+    "id": "t3_samplepost",
+    "url": "https://www.reddit.com/r/example/comments/t3_samplepost/sample_post/",
+    "author": "reddit_user_placeholder",
+    "created_at": "2025-12-03T00:53:42+00:00",
+    "title": "Sample Reddit post title",
+    "text": "Sample Reddit post body for testing cache and output behavior.",
+    "metrics": {
+      "score": 5,
+      "replies": 0,
+      "likes": null,
+      "views": null
+    },
+    "context": {
+      "subreddit": "example"
+    }
+  },
+  {
+    "platform": "reddit",
+    "id": "t1_samplecomment",
+    "url": "https://www.reddit.com/r/example/comments/t3_samplepost/comment/t1_samplecomment/",
+    "author": "reddit_commenter_placeholder",
+    "created_at": "2025-12-03T01:10:00+00:00",
+    "title": null,
+    "text": "Sample Reddit comment body linked to the sample post.",
+    "metrics": {
+      "score": 3,
+      "replies": 0,
+      "likes": null,
+      "views": null
+    },
+    "context": {
+      "post_id": "t3_samplepost"
+    }
+  }
+]
+

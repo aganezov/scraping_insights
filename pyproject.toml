@@ -20,6 +20,7 @@ dependencies = [
   "langdetect>=1.0.9",
   "youtube-transcript-api>=0.6.2",
   "pytest>=8.0.0",
+  "hypothesis>=6.148.0",
 ]
 
 [project.scripts]

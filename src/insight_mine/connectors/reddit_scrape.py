@@ -1,5 +1,5 @@
 from __future__ import annotations
-import os, time, logging, requests
+import os, time, logging, requests, random
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Tuple, Iterable, Optional
 from dataclasses import dataclass
@@ -121,14 +121,15 @@ def _headers() -> Dict[str, str]:
 
 
 def _get_json(s: requests.Session, url: str, params: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    for attempt in range(3):
+    for attempt in range(5):
         resp = s.get(url, params=params, headers=_headers(), timeout=TIMEOUT_S)
         if resp.status_code == 429:
             retry = float(resp.headers.get("Retry-After", "2.0"))
-            time.sleep(max(2.0, min(30.0, retry)))
+            time.sleep(max(2.0, min(30.0, retry + random.uniform(0, 1.0))))
             continue
         if resp.status_code >= 500:
-            time.sleep(1.5 * (attempt + 1))
+            delay = min(30.0, (2 ** attempt) + random.uniform(0, 1.0))
+            time.sleep(delay)
             continue
         if resp.status_code >= 400:
             log.warning("Reddit error %s on %s", resp.status_code, url)

@@ -1,7 +1,9 @@
+"""SQLite-backed cache utilities for deduping seen items."""
 from __future__ import annotations
 import sqlite3, time
 from pathlib import Path
 from typing import Iterable, Tuple, Set
+from contextlib import contextmanager
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS seen (
@@ -21,6 +23,19 @@ def open_db(path: str | Path) -> sqlite3.Connection:
     conn.execute("PRAGMA journal_mode=WAL;")
     conn.execute("PRAGMA synchronous=NORMAL;")
     return conn
+
+
+@contextmanager
+def cache_db(path: str | Path):
+    """Context manager wrapper for cache connections."""
+    conn = open_db(path)
+    try:
+        yield conn
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
 
 
 def load_seen(conn: sqlite3.Connection) -> Set[Tuple[str, str]]:

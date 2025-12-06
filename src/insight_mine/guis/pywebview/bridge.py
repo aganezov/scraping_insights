@@ -1,14 +1,12 @@
 from __future__ import annotations
-import json, os, re, threading, subprocess, shlex
+import json, os, re, shlex, subprocess, threading
 from pathlib import Path
 import webview
+from ...utils.text import mask_secret
 
 from . import cli_adapter, storage, envutil
-
-PROG_RE   = re.compile(r"PROGRESS\s+overall=(\d+)(?:\s+yt=(\d+))?(?:\s+rd=(\d+))?", re.I)
-TEL_RE    = re.compile(r"Telemetry\s+\((YouTube|Reddit(?: [^)]+)?)\):\s*(.*)$", re.I)
-WROTE_RE  = re.compile(r"Wrote\s+(\d+)\s+items\b", re.I)
-_KEPT_RE  = re.compile(r'\b(?P<k>(yt_video_kept|yt_comment_kept|rd_post_kept|rd_comment_kept))\s*:\s*(?P<v>\d+)')
+from .cli_runner import CliRunner
+from . import progress_parser as pp
 
 
 SETTINGS_FILE = envutil.ensure_app_dir() / "gui_settings.json"
@@ -292,28 +290,7 @@ class Bridge:
         Reddit  keys: rd_post_kept, rd_comment_kept (if present)
         Unknowns are ignored.
         """
-        p = c = 0
-        for tok in (tail or "").split(","):
-            tok = tok.strip()
-            if ":" not in tok:
-                continue
-            k, v = tok.split(":", 1)
-            try:
-                n = int((v or "0").strip())
-            except Exception:
-                n = 0
-            ks = k.strip().lower()
-            if source.lower().startswith("youtube"):
-                if "video_kept" in ks:
-                    p += n
-                elif "comment_kept" in ks:
-                    c += n
-            else:
-                if "post_kept" in ks:
-                    p += n
-                elif "comment_kept" in ks:
-                    c += n
-        return p, c
+        return pp.parse_kept_pairs(tail, source)
 
     def _telemetry_kept_sum(self, tail: str) -> int:
         par, com = self._parse_kept_pairs(tail, "YouTube")
@@ -321,14 +298,7 @@ class Bridge:
 
     def _kept_from_tail(self, tail: str) -> tuple[int, int]:
         """Return (parents_kept, comments_kept) from a telemetry tail string."""
-        parents = comments = 0
-        for m in _KEPT_RE.finditer(tail or ""):
-            k, v = m.group('k'), int(m.group('v'))
-            if k.endswith('video_kept') or k.endswith('post_kept'):
-                parents += v
-            elif k.endswith('comment_kept'):
-                comments += v
-        return parents, comments
+        return pp.parse_kept_from_tail(tail)
 
     def _parse_reddit_kept_tail(self, tail: str) -> tuple[int, int]:
         """
@@ -670,9 +640,9 @@ class Bridge:
         # Emit env diagnostics at the very start so they appear first in the log
         self._send("log", {"line": f"[DEBUG] env_path={self._env_path}"})
         self._send("log", {"line": f"[DEBUG] env IM_OUT_DIR={out_dir}"})
-        self._send("log", {"line": f"[DEBUG] env YTTI_WS_USER={self.env.get('YTTI_WS_USER')}, YTTI_WS_PASS={self.env.get('YTTI_WS_PASS')}"})
-        self._send("log", {"line": f"[DEBUG] env YTTI_API_TOKEN={self.env.get('YTTI_API_TOKEN')}"})
-        self._send("log", {"line": f"[DEBUG] env YOUTUBE_API_KEY={self.env.get('YOUTUBE_API_KEY')}"})
+        self._send("log", {"line": f"[DEBUG] env YTTI_WS_USER={mask_secret(self.env.get('YTTI_WS_USER') or '')}, YTTI_WS_PASS={mask_secret(self.env.get('YTTI_WS_PASS') or '')}"})
+        self._send("log", {"line": f"[DEBUG] env YTTI_API_TOKEN={mask_secret(self.env.get('YTTI_API_TOKEN') or '')}"})
+        self._send("log", {"line": f"[DEBUG] env YOUTUBE_API_KEY={mask_secret(self.env.get('YOUTUBE_API_KEY') or '')}"})
 
         self._reset_progress(knobs.get("connectors") if isinstance(knobs, dict) else None)
         k = self._normalize_knobs(knobs)
@@ -689,123 +659,15 @@ class Bridge:
         self._send("log", {"line": f"Executing CLI: {' '.join(cmd)}"})
 
         self.yt_count = 0; self.rd_count = 0
-        self.proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                     text=True, bufsize=1, env=self.env)
 
-        def reader():
-            for line in self.proc.stdout:
-                line = line.rstrip("\n")
-                self._send("log", {"line": line})
-                m_yt = re.search(r"Telemetry \(YouTube\):\s*(.*)$", line)
-                if m_yt:
-                    tail = m_yt.group(1) or ""
-                    if "-" not in tail:
-                        kv = dict()
-                        for tok in tail.split(","):
-                            if ":" in tok:
-                                k, v = tok.split(":", 1)
-                                k, v = k.strip(), v.strip()
-                                try:
-                                    kv[k] = int(v)
-                                except ValueError:
-                                    pass
-                        v_kept = int(kv.get("yt_video_kept", 0))
-                        c_kept = int(kv.get("yt_comment_kept", 0))
-                        self._counts["yt_par"] = v_kept
-                        self._counts["yt_com"] = c_kept
-                        self._emit_yt_counts(v_kept, c_kept)
-                # Reddit telemetry (same pattern as YouTube)
-                m_rd = re.search(r"Telemetry \(Reddit[^)]*\):\s*(.*)$", line)
-                if m_rd:
-                    tail = m_rd.group(1) or ""
-                    if "-" not in tail:
-                        kv = dict()
-                        for tok in tail.split(","):
-                            if ":" in tok:
-                                k, v = tok.split(":", 1)
-                                k, v = k.strip(), v.strip()
-                                try:
-                                    kv[k] = int(v)
-                                except ValueError:
-                                    pass
-                        p_kept = int(kv.get("rd_post_kept", 0))
-                        c_kept = int(kv.get("rd_comment_kept", 0))
-                        # Store in self._counts so finisher can read them
-                        self._counts["rd_par"] = p_kept
-                        self._counts["rd_com"] = c_kept
-                        self._emit_rd_counts(p_kept, c_kept)
-                try:
-                    obj = json.loads(line)
-                except Exception:
-                    obj = None
-                if isinstance(obj, dict) and obj.get("event") == "progress":
-                    self._emit_progress(
-                        overall=obj.get("overall"),
-                        youtube=obj.get("youtube"),
-                        reddit=obj.get("reddit"),
-                        yt_par=obj.get("yt_par"), yt_com=obj.get("yt_com"),
-                        rd_par=obj.get("rd_par"), rd_com=obj.get("rd_com"),
-                    )
-                    continue
-                if isinstance(obj, dict) and obj.get("event") == "item":
-                    plat = (obj.get("item") or {}).get("platform")
-                    if plat == "youtube":
-                        self._counts["yt_par"] += 1
-                    if plat == "reddit":
-                        self._counts["rd_par"] += 1
-                    self._emit_progress(
-                        yt_par=self._counts["yt_par"], yt_com=self._counts["yt_com"],
-                        rd_par=self._counts["rd_par"], rd_com=self._counts["rd_com"],
-                    )
-                    continue
-                m = PROG_RE.search(line)
-                if m:
-                    overall = int(m.group(1) or 0)
-                    youtube = int(m.group(2)) if m.group(2) else None
-                    reddit  = int(m.group(3)) if m.group(3) else None
-                    overall = self._clamp_cli_overall_for_transcripts(overall)
-                    self._emit_progress(
-                        overall=overall,
-                        youtube=youtube,
-                        reddit=reddit,
-                    )
-                    continue
-                t = TEL_RE.search(line)
-                if t:
-                    src = t.group(1) or ""
-                    tail = t.group(2) or ""
-                    # Skip placeholder "-" telemetry (no data), don't overwrite real counts
-                    if tail.strip() == "-":
-                        continue
-                    par, com = self._kept_from_tail(tail)
-                    if "youtube" in src.lower():
-                        self._yt_par = par
-                        self._yt_com = com
-                        self._emit_progress(yt_par=par, yt_com=com)
-                        self._emit_yt_counts(par, com)
-                    else:
-                        self._rd_par = par
-                        self._rd_com = com
-                        self._emit_progress(rd_par=par, rd_com=com)
-                        self._emit_rd_counts(par, com)
-                    self._emit_counts()
-                    continue
-                w = WROTE_RE.search(line)
-                if w:
-                    n = int(w.group(1))
-                    if self._selected.get("youtube") and not self._selected.get("reddit"):
-                        par = self._counts["yt_par"]
-                        self._emit_progress(yt_par=par, yt_com=max(0, n - par))
-                    elif self._selected.get("reddit") and not self._selected.get("youtube"):
-                        par = self._counts["rd_par"]
-                        self._emit_progress(rd_par=par, rd_com=max(0, n - par))
-                    continue
+        runner = CliRunner(
+            selected=self._selected,
+            counts=self._counts,
+            clamp_overall=self._clamp_cli_overall_for_transcripts,
+            parse_kept=lambda tail, _src: self._kept_from_tail(tail),
+        )
 
-        def finisher():
-            code = self.proc.wait()
-            # Wait for reader to finish processing all stdout (including telemetry)
-            if self.reader_t:
-                self.reader_t.join(timeout=5)
+        def on_finished(code: int) -> None:
             run = None
             try:
                 run = storage.build_ui_run(run_id, run_dir, k)
@@ -813,15 +675,10 @@ class Bridge:
                 self._send("run_error", {"message": f"failed to assemble run: {e}"})
             if code == 0 and run:
                 try:
-                    # Use telemetry-parsed values from self._counts (set by reader)
-                    # Don't recalculate - the telemetry is the source of truth
                     yt_par = self._counts.get("yt_par", 0)
                     yt_com = self._counts.get("yt_com", 0)
                     rd_par = self._counts.get("rd_par", 0)
                     rd_com = self._counts.get("rd_com", 0)
-                    # If transcripts are pending, keep overall/youtube at the
-                    # pre-transcript stage; the transcript fetcher will finish
-                    # the bars.
                     pending_transcripts = self._transcripts_pending()
                     base_overall = 90 if pending_transcripts else 100
                     base_youtube = self._pmax["youtube"]
@@ -836,13 +693,11 @@ class Bridge:
                         yt_par=yt_par, yt_com=yt_com,
                         rd_par=rd_par, rd_com=rd_com,
                     )
-                    # Explicitly emit counts to update chips (use telemetry values)
                     self._emit_yt_counts(yt_par, yt_com)
                     self._emit_rd_counts(rd_par, rd_com)
                 except Exception:
                     pass
-                
-                # Post-collection transcript fetching
+
                 transcript_mode = getattr(self, '_transcript_mode', 'off')
                 transcript_lang = getattr(self, '_transcript_lang', 'en')
                 self._send("log", {"line": f"[DEBUG] Finisher: transcript_mode={transcript_mode}"})
@@ -852,18 +707,28 @@ class Bridge:
                         self._fetch_transcripts_batch(run, run_dir, transcript_mode, transcript_lang)
                     except Exception as e:
                         self._send("log", {"line": f"Transcript fetch error: {e}"})
-                
-                # Emit a final DONE marker after all post-processing (including transcripts)
+
                 self._send("log", {"line": "DONE"})
                 self._send("run_complete", {"run": run})
             else:
                 self._send("run_error", {"message": f"CLI exited with code {code}"})
             self.proc = None
 
-        self.reader_t = threading.Thread(target=reader, daemon=True)
-        self.reader_t.start()
-        self.finish_t = threading.Thread(target=finisher, daemon=True)
-        self.finish_t.start()
+        runner.start(
+            cmd=cmd,
+            env=self.env,
+            on_log=lambda line: self._send("log", {"line": line}),
+            emit_progress=self._emit_progress,
+            emit_yt_counts=self._emit_yt_counts,
+            emit_rd_counts=self._emit_rd_counts,
+            emit_counts=self._emit_counts,
+            on_finished=on_finished,
+        )
+
+        self.proc = runner.proc
+        self.reader_t = runner.reader_t
+        self.finish_t = runner.finish_t
+        self._runner = runner
         return {"run_id": run_id}
 
     def start_collect_cmd(self, cli_text: str, selected: dict | None = None, transcript_mode: str = "off", transcript_lang: str = "en") -> dict:
@@ -945,113 +810,14 @@ class Bridge:
         out_path.mkdir(parents=True, exist_ok=True)
 
         self._send("log", {"line": f"[exec] {' '.join(argv)}"})
-        self.proc = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                     text=True, bufsize=1, env=self.env)
+        runner = CliRunner(
+            selected=self._selected,
+            counts=self._counts,
+            clamp_overall=None,
+            parse_kept=self._parse_kept_pairs,
+        )
 
-        def reader():
-            for line in self.proc.stdout:
-                line = line.rstrip("\n")
-                self._send("log", {"line": line})
-                m_yt = re.search(r"Telemetry \(YouTube\):\s*(.*)$", line)
-                if m_yt:
-                    tail = m_yt.group(1) or ""
-                    if "-" not in tail:
-                        kv = dict()
-                        for tok in tail.split(","):
-                            if ":" in tok:
-                                k, v = tok.split(":", 1)
-                                k, v = k.strip(), v.strip()
-                                try:
-                                    kv[k] = int(v)
-                                except ValueError:
-                                    pass
-                        v_kept = int(kv.get("yt_video_kept", 0))
-                        c_kept = int(kv.get("yt_comment_kept", 0))
-                        self._counts["yt_par"] = v_kept
-                        self._counts["yt_com"] = c_kept
-                        self._emit_yt_counts(v_kept, c_kept)
-                # Reddit telemetry (same pattern as YouTube)
-                m_rd = re.search(r"Telemetry \(Reddit[^)]*\):\s*(.*)$", line)
-                if m_rd:
-                    tail = m_rd.group(1) or ""
-                    if "-" not in tail:
-                        kv = dict()
-                        for tok in tail.split(","):
-                            if ":" in tok:
-                                k, v = tok.split(":", 1)
-                                k, v = k.strip(), v.strip()
-                                try:
-                                    kv[k] = int(v)
-                                except ValueError:
-                                    pass
-                        p_kept = int(kv.get("rd_post_kept", 0))
-                        c_kept = int(kv.get("rd_comment_kept", 0))
-                        # Store in self._counts so finisher can read them
-                        self._counts["rd_par"] = p_kept
-                        self._counts["rd_com"] = c_kept
-                        self._emit_rd_counts(p_kept, c_kept)
-                try:
-                    obj = json.loads(line)
-                except Exception:
-                    obj = None
-                if isinstance(obj, dict) and obj.get("event") == "progress":
-                    self._emit_progress(
-                        overall=obj.get("overall"),
-                        youtube=obj.get("youtube"),
-                        reddit=obj.get("reddit"),
-                        yt_par=obj.get("yt_par"), yt_com=obj.get("yt_com"),
-                        rd_par=obj.get("rd_par"), rd_com=obj.get("rd_com"),
-                    )
-                    continue
-                if isinstance(obj, dict) and obj.get("event") == "item":
-                    plat = (obj.get("item") or {}).get("platform")
-                    if plat == "youtube":
-                        self._counts["yt_par"] += 1
-                    if plat == "reddit":
-                        self._counts["rd_par"] += 1
-                    self._emit_progress(yt_par=self._counts["yt_par"], yt_com=self._counts["yt_com"],
-                                        rd_par=self._counts["rd_par"], rd_com=self._counts["rd_com"])
-                    continue
-                m = PROG_RE.search(line)
-                if m:
-                    self._emit_progress(
-                        overall=int(m.group(1) or 0),
-                        youtube=(int(m.group(2)) if m.group(2) else None),
-                        reddit=(int(m.group(3)) if m.group(3) else None),
-                    )
-                    continue
-                t = TEL_RE.search(line)
-                if t:
-                    src = t.group(1) or ""
-                    tail = t.group(2) or ""
-                    # Skip placeholder "-" telemetry (no data), don't overwrite real counts
-                    if tail.strip() == "-":
-                        continue
-                    par, com = self._parse_kept_pairs(tail, src)
-                    if "youtube" in src.lower():
-                        self._emit_progress(yt_par=par, yt_com=com)
-                        self._emit_yt_counts(par, com)
-                    else:
-                        self._emit_progress(rd_par=par, rd_com=com)
-                        self._emit_rd_counts(par, com)
-                    self._emit_counts()
-                    continue
-                w = WROTE_RE.search(line)
-                if w:
-                    n = int(w.group(1))
-                    if self._selected.get("youtube") and not self._selected.get("reddit"):
-                        par = self._counts["yt_par"]
-                        self._emit_progress(yt_par=par, yt_com=max(0, n - par))
-                    elif self._selected.get("reddit") and not self._selected.get("youtube"):
-                        par = self._counts["rd_par"]
-                        self._emit_progress(rd_par=par, rd_com=max(0, n - par))
-                    continue
-
-        def finisher():
-            code = self.proc.wait()
-            # Wait for reader to finish processing all stdout (including telemetry)
-            if self.reader_t:
-                self.reader_t.join(timeout=5)
+        def on_finished(code: int) -> None:
             run = None
             run_dir = self._latest_run_dir(out_path) or out_path
             run_id = run_dir.name
@@ -1061,8 +827,6 @@ class Bridge:
                 self._send("run_error", {"message": f"failed to assemble run: {e}"})
             if code == 0 and run:
                 try:
-                    # Use telemetry-parsed values from self._counts (set by reader)
-                    # Don't recalculate - the telemetry is the source of truth
                     yt_par = self._counts.get("yt_par", 0)
                     yt_com = self._counts.get("yt_com", 0)
                     rd_par = self._counts.get("rd_par", 0)
@@ -1074,21 +838,18 @@ class Bridge:
                         yt_par=yt_par, yt_com=yt_com,
                         rd_par=rd_par, rd_com=rd_com,
                     )
-                    # Explicitly emit counts to update chips (use telemetry values)
                     self._emit_yt_counts(yt_par, yt_com)
                     self._emit_rd_counts(rd_par, rd_com)
                 except Exception:
                     pass
 
-                # Persist run.json immediately so post-run fetches/refetches have a file to update
                 try:
                     rj = run_dir / "run.json"
                     if not rj.exists():
                         rj.write_text(json.dumps(run, indent=2), encoding="utf-8")
                 except Exception:
                     pass
-                
-                # Post-collection transcript fetching
+
                 transcript_mode = getattr(self, '_transcript_mode', 'off')
                 transcript_lang = getattr(self, '_transcript_lang', 'en')
                 self._send("log", {"line": f"[DEBUG] Finisher: transcript_mode={transcript_mode}"})
@@ -1098,16 +859,27 @@ class Bridge:
                         self._fetch_transcripts_batch(run, run_dir, transcript_mode, transcript_lang)
                     except Exception as e:
                         self._send("log", {"line": f"Transcript fetch error: {e}"})
-                
+
                 self._send("run_complete", {"run": run})
             else:
                 self._send("run_error", {"message": f"CLI exited with code {code}"})
             self.proc = None
 
-        self.reader_t = threading.Thread(target=reader, daemon=True)
-        self.reader_t.start()
-        self.finish_t = threading.Thread(target=finisher, daemon=True)
-        self.finish_t.start()
+        runner.start(
+            cmd=argv,
+            env=self.env,
+            on_log=lambda line: self._send("log", {"line": line}),
+            emit_progress=self._emit_progress,
+            emit_yt_counts=self._emit_yt_counts,
+            emit_rd_counts=self._emit_rd_counts,
+            emit_counts=self._emit_counts,
+            on_finished=on_finished,
+        )
+
+        self.proc = runner.proc
+        self.reader_t = runner.reader_t
+        self.finish_t = runner.finish_t
+        self._runner = runner
         return {"ok": True}
 
     def cancel_collect(self) -> dict:
@@ -1121,7 +893,19 @@ class Bridge:
                 self.proc.kill()
             self._send("run_error", {"message": "Cancelled"})
         finally:
+            if self.reader_t:
+                try:
+                    self.reader_t.join(timeout=2)
+                except Exception:
+                    pass
+            if self.finish_t:
+                try:
+                    self.finish_t.join(timeout=2)
+                except Exception:
+                    pass
             self.proc = None
+            self.reader_t = None
+            self.finish_t = None
         return {"ok": True}
 
     def fetch_transcript(self, item_id: str, run_id: str = "", lang: str = "en", mode: str = "free") -> dict:
