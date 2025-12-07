@@ -38,3 +38,4 @@ def test_list_runs_returns_created_runs(tmp_path):
     topics = {r["topic"] for r in runs}
     assert "t1" in topics and "t2" in topics
 
+

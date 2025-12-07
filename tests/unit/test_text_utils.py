@@ -28,3 +28,4 @@ def test_mask_secret_behaviors():
     assert mask_secret("short") == "****"
     assert mask_secret("longsecret") == "lon...ret"
 
+

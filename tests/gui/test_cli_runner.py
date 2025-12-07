@@ -42,3 +42,4 @@ def test_cli_runner_parses_progress_and_finishes(tmp_path):
     assert counts["yt_par"] == 1
     assert counts["yt_com"] == 2
 
+

@@ -40,3 +40,4 @@ def test_build_collect_cmd_excludes_disabled_reddit(tmp_path):
     cmd, _, _ = build_collect_cmd(k, {}, tmp_path, create_dirs=False)
     assert "--reddit-limit" not in cmd
 
+

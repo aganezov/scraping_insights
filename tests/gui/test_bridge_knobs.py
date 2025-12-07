@@ -32,3 +32,4 @@ def test_build_command_returns_valid_cli(monkeypatch, tmp_path):
     assert "collect" in cmd
     assert "k1" in result["cmd_string"]
 
+

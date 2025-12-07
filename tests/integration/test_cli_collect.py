@@ -80,3 +80,4 @@ def test_reddit_collect_creates_outputs(tmp_path, mock_reddit):
     manifest = json.loads((latest / "run_manifest.json").read_text())
     assert manifest["counts"]["reddit_post"] >= 1 or manifest["counts"]["reddit_comment"] >= 1
 
+

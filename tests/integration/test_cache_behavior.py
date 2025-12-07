@@ -70,3 +70,4 @@ def test_cache_skips_seen_items(tmp_path, mock_youtube):
     manifest3 = json.loads((run3 / "run_manifest.json").read_text())
     assert manifest3["dropped_by_cache"] == 0
 
+

@@ -40,3 +40,4 @@ def test_upsert_many_dedupes_on_conflict(tmp_path):
         rows = conn.execute("SELECT platform, id FROM seen").fetchall()
     assert set(rows) == {("youtube", "a"), ("reddit", "b")}
 
+

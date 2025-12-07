@@ -60,3 +60,4 @@ def test_all_connectors_disabled_produces_empty_output(tmp_path, monkeypatch):
     manifest = json.loads((latest / "run_manifest.json").read_text())
     assert manifest["counts"]["total"] == 0
 
+

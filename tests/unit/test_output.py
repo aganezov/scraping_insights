@@ -110,3 +110,4 @@ def test_write_outputs_creates_files_and_truncates_paste_ready(tmp_path):
     assert manifest["topic"] == "t"
     assert manifest["connectors"] == connectors
 
+

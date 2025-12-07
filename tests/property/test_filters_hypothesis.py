@@ -35,3 +35,4 @@ def test_dedupe_is_idempotent(items):
     twice = dedupe_items(once)
     assert once == twice
 
+
