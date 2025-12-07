@@ -15,6 +15,9 @@ from ..config import get_secret
 from ..models import Item
 from ..utils.text import keep_by_lang
 
+MIN_BUDGET = 8
+BUDGET_MULTIPLIER = 8
+
 log = logging.getLogger("insight_mine.connectors.youtube")
 
 # ---------------- Tunables (override by env if needed) ----------------
@@ -33,7 +36,7 @@ def status() -> Tuple[bool, str]:
     key = get_secret("YOUTUBE_API_KEY")
     if not key:
         return (False, "YOUTUBE_API_KEY not set.")
-    return (True, "AVAILABLE")
+    return (True, "OK")
 
 
 def collect(
@@ -97,7 +100,7 @@ def collect(
     yt = _build_client(api_key)
 
     target = int(max_videos)
-    budget = max(8, target * 8)  # upper bound on *candidates*, not kept
+    budget = max(MIN_BUDGET, target * BUDGET_MULTIPLIER)  # upper bound on *candidates*, not kept
     rel_lang = langs[0] if langs else "en"
 
     log.info(

@@ -4,214 +4,92 @@ overview: Comprehensive refactoring addressing security vulnerabilities (credent
 todos:
   - id: security-secrets
     content: Remove real credentials from seed_settings.env, replace with placeholders
-    status: pending
+    status: completed
   - id: security-mask-cli
     content: Add mask_secret() helper and apply to cli.py:209-211 logging
-    status: pending
+    status: completed
   - id: security-mask-gui
     content: Mask credentials in bridge.py:671-675 GUI logging
-    status: pending
+    status: completed
   - id: arch-extract-cli-runner
     content: Extract duplicate reader/finisher threads from bridge.py into cli_runner.py
-    status: pending
+    status: completed
   - id: arch-extract-progress
     content: Extract regex patterns and telemetry parsing into progress_parser.py
-    status: pending
+    status: completed
   - id: arch-split-cli
     content: Split cli.py into args.py, orchestrator.py, output.py modules
-    status: pending
+    status: completed
   - id: arch-db-context
     content: Add context manager for SQLite connections in cache.py
-    status: pending
+    status: completed
   - id: robust-reddit-backoff
     content: Add exponential backoff for 5xx errors in reddit_scrape.py
-    status: pending
+    status: completed
   - id: robust-thread-cleanup
     content: Add thread join in cancel_collect() method
-    status: pending
+    status: completed
   - id: test-cli-args
     content: Add tests for CLI argument parsing and preset resolution
-    status: pending
+    status: completed
   - id: test-variety-guard
     content: Add tests for variety guard algorithm
-    status: pending
+    status: completed
   - id: test-progress-regex
     content: Add tests for progress/telemetry parsing regex
-    status: pending
+    status: completed
   - id: polish-naming
     content: Rename _eff() and extract magic numbers to constants
-    status: pending
+    status: completed
   - id: polish-docstrings
     content: Add module-level docstrings to key files
-    status: pending
+    status: completed
 ---
 
-# Insight Mine Comprehensive Refactoring Plan
+# Test Suite Expansion Plan
 
-Based on code reviews from Gemini 3 Pro, GPT-5.1 Codex Max, and Claude Opus 4.5.
+## Goals
 
-## Phase 1: Critical Security Fixes
+- Broaden coverage across CLI flows, connectors, and GUI bridge behavior.
+- Enforce zero paid API usage in tests; allow recorded fixtures/mocks only.
 
-### 1.1 Remove Exposed Credentials
+## Scope & Strategy
 
-`packaging/seed_settings.env` contains real API keys that ship with builds.
+- **Unit tests (pure/mocked):**
+- `src/insight_mine/cli/args.py`: flag/preset/env resolution (langs, limits, toggles), ensure `YTTI_SKIP_PAID` respected.
+- `src/insight_mine/connectors/youtube.py`: budget calc, status handling (no real API; mock `get_secret` and client build), filtering helpers.
+- `src/insight_mine/connectors/reddit_scrape.py`: backoff logic (timing via monkeypatch), filter predicates, JSON handling with mocked `requests.Session`.
+- `src/insight_mine/guis/pywebview/progress_parser.py`: progress/telemetry regex parsing.
+- `src/insight_mine/utils/cache.py`: context manager behavior, schema init.
 
-**Actions:**
+- **Integration tests (mocked/recorded I/O, no paid):**
+- CLI collect end-to-end with faked connectors: patch yt/rd collectors to return fixtures; assert outputs (`raw.jsonl`, `paste-ready.txt`, `run_manifest.json`) and progress logs.
+- Variety guard + dedupe + cache interaction: seed cache, run collect, verify drops and manifest counts.
+- Transcript flow (free-only): set `YTTI_SKIP_PAID=1`, mock `ytti_client` free path to return text, ensure paid path never called.
+- Optional recorded fixtures: allow VCRpy for deterministic HTTP snapshots for reddit search JSON (non-paid) with `record_mode=none` in CI.
 
-- Replace real values with placeholders in `seed_settings.env`
-- Add `.env` pattern to `.gitignore` if missing
-- **Rotate/revoke all exposed credentials immediately** (manual step)
+- **GUI/bridge behavior tests (headless/logic-level):**
+- Bridge command construction and env masking: patch `_send`, assert masked keys and built CLI args.
+- Progress parsing via `CliRunner` + `progress_parser`: feed synthetic stdout lines, assert emitted progress/counts.
+- Cancel behavior: ensure threads joined and proc killed (use dummy proc mock).
 
-### 1.2 Mask Secrets in Logs
+- **User-behavior style tests (lightweight):**
+- CLI UX: golden output for `--explain` (snapshot text) with stable fixtures.
+- GUI command preview: unit-level test for `build_command` output given knobs/env (no UI automation needed).
 
-Credentials logged in plaintext at:
+## Safety Controls (paid usage guard)
 
-- `cli.py:209-211` - logs full env values
-- `bridge.py:671-675` - sends credentials to UI log panel
+- Keep `tests/conftest.py` auto-setting `YTTI_SKIP_PAID=1`; only allow paid via explicit `YTTI_ALLOW_PAID_TESTS=1` opt-in.
+- For recorded fixtures, store cassettes under `tests/fixtures/cassettes/` and set record mode to “none” by default.
 
-**Actions:**
+## Tooling & Structure
 
-- Create `_mask_secret()` helper in `utils/text.py`:
-```python
-def mask_secret(val: str) -> str:
-    if not val: return "(not set)"
-    if len(val) <= 8: return "****"
-    return f"{val[:3]}...{val[-3:]}"
-```
+- Add fixtures under `tests/fixtures/` (sample items, manifests, reddit/youtube sample JSON).
+- Use `pytest` with markers: `unit`, `integration`, `gui`, `slow`. Default run excludes `slow`.
+- Add `pytest.ini` to register markers and set env defaults (e.g., `YTTI_SKIP_PAID=1`).
 
-- Apply masking in CLI and GUI logging
+## Deliverables
 
----
-
-## Phase 2: Architecture Refactoring
-
-### 2.1 Split `bridge.py` (1311 lines)
-
-Current responsibilities: subprocess management, log parsing, file I/O, transcript fetching, settings persistence, run history.
-
-**Target structure:**
-
-```
-guis/pywebview/
-├── bridge.py           # Slim JS API exposure (~200 lines)
-├── cli_runner.py       # Subprocess + thread management
-├── progress_parser.py  # Regex patterns, telemetry extraction
-├── transcript_ops.py   # Transcript fetching logic
-└── (existing files)
-```
-
-**Key extraction:**
-
-- Extract duplicate `reader()` and `finisher()` functions from `start_collect()` (line 695) and `start_collect_cmd()` (line 951) into `cli_runner.py`
-
-### 2.2 Split `cli.py` (511 lines)
-
-**Target structure:**
-
-```
-cli/
-├── __init__.py        # Re-exports main()
-├── args.py            # Argument parsing, preset resolution
-├── orchestrator.py    # Connector coordination
-└── output.py          # File writing, formatting, variety guard
-```
-
-### 2.3 Database Context Managers
-
-`cli.py:401-411` - connections not managed safely.
-
-**Action:** Wrap with context manager:
-
-```python
-@contextlib.contextmanager
-def cache_db(path: str):
-    conn = open_db(path)
-    try:
-        yield conn
-    finally:
-        conn.close()
-```
-
----
-
-## Phase 3: Robustness Improvements
-
-### 3.1 Reddit Scraping Resilience
-
-`reddit_scrape.py` only handles 429; no exponential backoff for 5xx.
-
-**Action:** Add jittered exponential backoff:
-
-```python
-for attempt in range(max_retries):
-    # ... request ...
-    if resp.status_code >= 500:
-        delay = min(30, (2 ** attempt) + random.uniform(0, 1))
-        time.sleep(delay)
-        continue
-```
-
-### 3.2 Thread Cleanup on Cancel
-
-`bridge.py:1113-1125` - `cancel_collect()` doesn't join threads.
-
-**Action:** Add explicit thread cleanup:
-
-```python
-def cancel_collect(self):
-    # ... existing terminate/kill ...
-    if self.reader_t:
-        self.reader_t.join(timeout=2)
-    if self.finish_t:
-        self.finish_t.join(timeout=2)
-```
-
-### 3.3 Narrow Exception Handling
-
-Replace `except Exception:` with specific exceptions where safe.
-
----
-
-## Phase 4: Testing Expansion
-
-### 4.1 Priority Test Cases
-
-Current tests only cover connector status toggles and language utils.
-
-**Add tests for:**
-
-1. **CLI argument parsing** - preset resolution, flag overrides
-2. **Variety guard algorithm** - `apply_variety_guard()`
-3. **Progress parsing regex** - `PROG_RE`, `TEL_RE`, `_KEPT_RE`
-4. **Output serialization** - JSONL/text formatting
-5. **Integration tests** - mock API responses for YouTube/Reddit collect flows
-
-### 4.2 Test Infrastructure
-
-- Add `conftest.py` with fixtures for sample data
-- Add mock factories for API responses
-
----
-
-## Phase 5: Code Quality Polish
-
-### 5.1 Naming and Constants
-
-- Rename `_eff()` to `_resolve_setting()` in `cli.py`
-- Extract magic numbers to named constants:
-  - `SNIPPET_MAX_LEN = 1200` (cli.py:428)
-  - `BUDGET_MULTIPLIER = 8` (youtube.py:100)
-
-### 5.2 Documentation
-
-- Add module-level docstrings to all files
-- Document Item schema fields in `models.py`
-
-### 5.3 Type Safety
-
-- Convert `metrics: Dict[str, Any] `to `TypedDict` in `models.py`
-- Move `pytest` to dev dependencies in `pyproject.toml`
-
-### 5.4 Cleanup
-
-- Remove or implement `x_api.py` placeholder connector
+- New/updated tests across areas above with mocks/fixtures.
+- Updated test config (`pytest.ini`) and fixtures directory.
+- Documentation note in `README` or `CONTRIBUTING` about paid API guard and how to opt-in for paid tests (optional).

@@ -61,3 +61,15 @@ def dedupe_items(items: List[dict]) -> List[dict]:
         seen.add(sig)
         out.append(it)
     return out
+
+
+def mask_secret(val: str) -> str:
+    """
+    Mask sensitive string values for logging.
+    Shows only prefix/suffix when long enough.
+    """
+    if not val:
+        return "(not set)"
+    if len(val) <= 8:
+        return "****"
+    return f"{val[:3]}...{val[-3:]}"
