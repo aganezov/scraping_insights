@@ -13,3 +13,4 @@ dist/
 run.log
 run.json
 *.app/
+.hypothesis/
