@@ -29,6 +29,43 @@ a:hover{text-decoration:underline}
 .tab{padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--chip);color:var(--muted);cursor:pointer;font-size:13px;transition:background .15s,color .15s}
 .tab.active{background:var(--panel);color:var(--text);border-color:var(--accent)}
 .panel{border:1px solid var(--border);border-radius:12px;background:var(--panel);padding:12px}
+/* Collect: refreshed shell */
+.collect-panel{display:flex;flex-direction:column;gap:12px}
+.collect-hero{display:grid;grid-template-columns:1.2fr 1fr;gap:12px;padding:14px;border:1px solid var(--border);border-radius:12px;background:linear-gradient(140deg, rgba(96,165,250,.15), rgba(34,197,94,.08));box-shadow:0 10px 32px rgba(0,0,0,.24)}
+.eyebrow{font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:2px}
+.hero-title{margin:0;font-size:22px;line-height:1.25;font-weight:800}
+.hero-copy{margin:4px 0 0;color:var(--muted);line-height:1.5}
+.pill-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:var(--chip);color:var(--text);font-size:12px;font-weight:600;white-space:nowrap}
+.pill.accent{border-color:var(--accent);color:var(--accent);background:rgba(147,197,253,.12)}
+.pill.ok{border-color:var(--ok);color:var(--ok);background:rgba(34,197,94,.12)}
+.pill.warn{border-color:var(--warn);color:var(--warn);background:rgba(245,158,11,.12)}
+.pill.ghost{border-style:dashed;color:var(--muted)}
+.collect-grid{gap:12px}
+.card-ghost{background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.0)), var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px;box-shadow:0 6px 18px rgba(0,0,0,.18)}
+.field-header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.micro{font-size:12px;color:var(--muted)}
+.quick-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.quick-chip{padding:6px 10px;border-radius:9px;border:1px dashed var(--border);background:var(--chip);color:var(--text);font-size:12px;cursor:pointer;transition:border-color .12s, color .12s, transform .12s, box-shadow .18s}
+.quick-chip:hover{border-color:var(--accent);color:var(--accent);transform:translateY(-1px);background:var(--hover)}
+.quick-chip.active-pulse{box-shadow:0 0 0 6px rgba(96,165,250,.16)}
+.hero-note{background:var(--chip);border:1px dashed var(--border);border-radius:10px;padding:10px}
+.hero-list{margin:8px 0 0;padding-left:18px;color:var(--muted);font-size:12px;line-height:1.5}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;align-items:start;margin-top:8px}
+.stat-card{background:var(--chip);border:1px solid var(--border);border-radius:10px;padding:10px}
+.stat-title{font-size:13px;color:var(--muted);margin-bottom:6px}
+.progress.big{height:12px}
+.progress.mini{height:8px}
+.pill-switch{padding:6px 10px;border-radius:999px;border:1px dashed var(--border);background:var(--chip)}
+.pill-switch select{min-width:150px}
+.soft-wrap{flex-wrap:wrap}
+.action-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px}
+.action-hint{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.section-note{margin-top:6px;color:var(--muted);font-size:12px}
+details.advanced{background:var(--chip);border:1px dashed var(--border);border-radius:10px;padding:10px}
+details.advanced summary{cursor:pointer;user-select:none;font-weight:700}
+details.advanced[open]{border-color:var(--accent)}
+.active-pulse{box-shadow:0 0 0 6px rgba(147,197,253,.18)}
 .grid{display:grid;gap:14px}
 .grid.cols-2{grid-template-columns:1.25fr 1fr}
 .grid.cols-3{grid-template-columns:repeat(3,1fr)}
@@ -203,199 +240,289 @@ th.sortable .sort-ind{font-size:11px;color:var(--muted)}
     </div>
 
     <!-- COLLECT -->
-    <div class="panel" data-page="collect">
-      <div class="grid cols-2" style="align-items:stretch">
-        <div style="display:flex;flex-direction:column">
-          <div class="row" style="justify-content:flex-start;gap:12px">
-            <label class="switch">
-              <input id="enableYoutube" type="checkbox" checked> <span>YouTube</span>
-            </label>
-            <label class="switch" title="Transcript fetching mode: off=skip, free=youtube-transcript-api only, any=free first then paid API">
-              <span>Transcripts:</span>
-              <select id="transcriptMode" class="input" style="width:auto;padding:4px 8px;font-size:13px">
-                <option value="off">Off</option>
-                <option value="free">Free only</option>
-                <option value="any">Any (free→paid)</option>
-              </select>
-            </label>
-            <label class="switch"><input id="enableReddit" type="checkbox" checked> <span>Reddit</span></label>
+    <div class="panel collect-panel" data-page="collect">
+      <div class="collect-hero">
+        <div>
+          <div class="eyebrow">Collect tab</div>
+          <div class="hero-title">Refresh signals without leaving the flow</div>
+          <p class="hero-copy">Dual‑source capture with quick presets, clearer status, and cleaner handoff.</p>
+          <div class="pill-row">
+            <span class="pill accent">Reddit + YouTube</span>
+            <span class="pill ok">Command preview auto-updates</span>
+            <span class="pill ghost">Runs through the desktop bridge</span>
           </div>
-          <hr class="sep"/>
-          <div class="grid cols-3">
-            <div>
-              <div class="label">Topic</div>
-              <input id="topic" class="input" placeholder="e.g., electric cars charging speed">
+        </div>
+        <div class="hero-right">
+          <div class="hero-note">
+            <div class="label">Collect tips</div>
+            <ul class="hero-list">
+              <li>Keep the topic tight; add subreddits only when needed.</li>
+              <li>Use quick recency buttons to trim noise fast.</li>
+              <li>Check source chips, then tap Explain or Run.</li>
+            </ul>
+          </div>
+          <div class="pill-row" style="margin-top:10px">
+            <span class="pill ghost">New: quick since presets</span>
+            <span class="pill ghost">New: topic nudge chips</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid cols-2 collect-grid" style="align-items:stretch">
+        <div class="collect-left" style="display:flex;flex-direction:column;gap:10px">
+          <div class="card-ghost">
+            <div class="field-header">
+              <div>
+                <div class="label">Sources & transcripts</div>
+                <div class="micro">Toggle sources or transcript mode without leaving the form.</div>
+              </div>
+              <span class="pill ghost">Step 1</span>
             </div>
-            <div>
-              <div class="label">Since</div>
-              <input id="since" type="date" class="input">
+            <div class="row soft-wrap" style="gap:10px">
+              <label class="switch pill-switch">
+                <input id="enableYoutube" type="checkbox" checked> <span>YouTube</span>
+              </label>
+              <label class="switch pill-switch" title="Transcript fetching mode: off=skip, free=youtube-transcript-api only, any=free first then paid API">
+                <span>Transcripts:</span>
+                <select id="transcriptMode" class="input" style="width:auto;padding:4px 8px;font-size:13px">
+                  <option value="off">Off</option>
+                  <option value="free">Free only</option>
+                  <option value="any">Any (free→paid)</option>
+                </select>
+              </label>
+              <label class="switch pill-switch"><input id="enableReddit" type="checkbox" checked> <span>Reddit</span></label>
             </div>
-            <div>
+          </div>
+
+          <div class="card-ghost">
+            <div class="field-header">
+              <div>
+                <div class="label">Topic</div>
+                <div class="micro">Short and specific keeps results on target.</div>
+              </div>
+              <span class="pill ghost">Step 2</span>
+            </div>
+            <input id="topic" class="input" placeholder="e.g., electric cars charging speed">
+            <div class="quick-chips">
+              <button class="quick-chip topic-idea" type="button" data-topic="EV charging anxiety">EV charging anxiety</button>
+              <button class="quick-chip topic-idea" type="button" data-topic="AI agent onboarding friction">AI agent onboarding friction</button>
+              <button class="quick-chip topic-idea" type="button" data-topic="Second-brain app comparisons">Second-brain app comparisons</button>
+            </div>
+          </div>
+
+          <div class="card-ghost">
+            <div class="field-header">
+              <div class="label">Recency</div>
+              <div class="micro">Pick a window before diving into advanced knobs.</div>
+            </div>
+            <div class="quick-chips">
+              <button class="quick-chip quick-since" type="button" data-days="7">Last 7 days</button>
+              <button class="quick-chip quick-since" type="button" data-days="30">Last 30 days</button>
+              <button class="quick-chip quick-since" type="button" data-days="90">Last 90 days</button>
+              <button class="quick-chip quick-since" type="button" data-days="0">Today</button>
+            </div>
+            <input id="since" type="date" class="input">
+          </div>
+
+          <div class="card-ghost">
+            <div class="field-header">
               <div class="label">Subreddits (optional)</div>
-              <div class="subreddit-picker">
+              <div class="micro">Add guardrails only when you need focus.</div>
+            </div>
+            <div class="subreddit-picker">
+              <div class="row" style="gap:8px;align-items:center">
                 <button class="btn" id="openSubredditPicker" type="button">+ Add subreddits</button>
-                <div class="subreddit-chips" id="subredditChips"></div>
+                <span class="micro">Leave empty for broad discovery.</span>
               </div>
-              <input type="hidden" id="subs">
+              <div class="subreddit-chips" id="subredditChips"></div>
             </div>
+            <input type="hidden" id="subs">
           </div>
-          <details style="margin-top:8px">
-            <summary><strong>Advanced overrides</strong> <span class="small">(defaults are pre‑set)</span></summary>
 
-            <div class="grid cols-3" style="margin-top:8px">
-              <div>
-                <div class="label">Language</div>
-                <select id="lang" class="input">
-                  <option value="en" selected>English (eng)</option>
-                  <option value="es">Spanish (es)</option>
-                  <option value="de">German (de)</option>
-                </select>
-              </div>
-              <div>
-                <div class="label">Reddit method</div>
-                <select id="redditMethod" class="input" disabled>
-                  <option value="scrape" selected>scrape (fixed)</option>
-                </select>
-              </div>
-              <div>
-                <div class="label">Dedupe</div>
-                <select id="dedupe" class="input">
-                  <option value="on" selected>on</option>
-                  <option value="off">off</option>
-                </select>
-              </div>
-            </div>
+          <div class="card-ghost">
+            <details class="advanced">
+              <summary><strong>Advanced overrides</strong> <span class="small">(defaults are pre‑set)</span></summary>
 
-            <div class="grid cols-3" style="margin-top:8px">
-              <div>
-                <div class="label">Reddit: selection</div>
-                <select id="redditSelector" class="input">
-                  <option value="hot" selected>listing: hot</option>
-                  <option value="top">listing: top</option>
-                  <option value="new">listing: new</option>
-                  <option value="search">search (with query)</option>
-                </select>
-                <div class="small" style="margin-top:6px">
-                  <em>Search</em> is query‑based with its own sort/time. 
-                  <em>Hot/New/Top</em> select from subreddit listings.
+              <div class="grid cols-3" style="margin-top:8px">
+                <div>
+                  <div class="label">Language</div>
+                  <select id="lang" class="input">
+                    <option value="en" selected>English (eng)</option>
+                    <option value="es">Spanish (es)</option>
+                    <option value="de">German (de)</option>
+                  </select>
+                </div>
+                <div>
+                  <div class="label">Reddit method</div>
+                  <select id="redditMethod" class="input" disabled>
+                    <option value="scrape" selected>scrape (fixed)</option>
+                  </select>
+                </div>
+                <div>
+                  <div class="label">Dedupe</div>
+                  <select id="dedupe" class="input">
+                    <option value="on" selected>on</option>
+                    <option value="off">off</option>
+                  </select>
                 </div>
               </div>
-              <div id="redditQueryWrap">
-                <div class="label">Reddit: search query</div>
-                <input id="redditQuery" class="input" placeholder="e.g., fast charging OR slow charging">
-              </div>
-              <div id="redditSearchOpts" class="hidden">
-                <div class="label">Search sort & time</div>
-                <div class="row">
-                  <select id="redditSearchSort" class="input" style="max-width:160px">
-                    <option value="relevance" selected>relevance</option>
-                    <option value="hot">hot</option>
-                    <option value="new">new</option>
-                    <option value="top">top</option>
-                    <option value="comments">comments</option>
+
+              <div class="grid cols-3" style="margin-top:8px">
+                <div>
+                  <div class="label">Reddit: selection</div>
+                  <select id="redditSelector" class="input">
+                    <option value="hot" selected>listing: hot</option>
+                    <option value="top">listing: top</option>
+                    <option value="new">listing: new</option>
+                    <option value="search">search (with query)</option>
                   </select>
-                  <select id="redditSearchTime" class="input" style="max-width:140px">
-                    <option value="all" selected>all</option>
-                    <option value="hour">hour</option>
+                  <div class="small" style="margin-top:6px">
+                    <em>Search</em> is query‑based with its own sort/time. 
+                    <em>Hot/New/Top</em> select from subreddit listings.
+                  </div>
+                </div>
+                <div id="redditQueryWrap">
+                  <div class="label">Reddit: search query</div>
+                  <input id="redditQuery" class="input" placeholder="e.g., fast charging OR slow charging">
+                </div>
+                <div id="redditSearchOpts" class="hidden">
+                  <div class="label">Search sort & time</div>
+                  <div class="row">
+                    <select id="redditSearchSort" class="input" style="max-width:160px">
+                      <option value="relevance" selected>relevance</option>
+                      <option value="hot">hot</option>
+                      <option value="new">new</option>
+                      <option value="top">top</option>
+                      <option value="comments">comments</option>
+                    </select>
+                    <select id="redditSearchTime" class="input" style="max-width:140px">
+                      <option value="all" selected>all</option>
+                      <option value="hour">hour</option>
+                      <option value="day">day</option>
+                      <option value="week">week</option>
+                      <option value="month">month</option>
+                      <option value="year">year</option>
+                    </select>
+                  </div>
+                </div>
+                <div id="redditTopOpts" class="hidden">
+                  <div class="label">Top: time window</div>
+                  <select id="redditTopTime" class="input" style="max-width:160px">
                     <option value="day">day</option>
-                    <option value="week">week</option>
+                    <option value="week" selected>week</option>
                     <option value="month">month</option>
                     <option value="year">year</option>
+                    <option value="all">all</option>
                   </select>
                 </div>
               </div>
-              <div id="redditTopOpts" class="hidden">
-                <div class="label">Top: time window</div>
-                <select id="redditTopTime" class="input" style="max-width:160px">
-                  <option value="day">day</option>
-                  <option value="week" selected>week</option>
-                  <option value="month">month</option>
-                  <option value="year">year</option>
-                  <option value="all">all</option>
-                </select>
-              </div>
-            </div>
 
-            <div class="grid cols-3" style="margin-top:8px">
-              <div>
-                <div class="label">YouTube: max videos</div>
-                <input id="ytMaxVideos" type="number" min="0" value="25" class="input">
+              <div class="grid cols-3" style="margin-top:8px">
+                <div>
+                  <div class="label">YouTube: max videos</div>
+                  <input id="ytMaxVideos" type="number" min="0" value="25" class="input">
+                </div>
+                <div>
+                  <div class="label">YouTube: comments/video</div>
+                  <input id="ytComments" type="number" min="0" value="60" class="input">
+                </div>
+                <div>
+                  <div class="label">YouTube: min views</div>
+                  <input id="ytMinViews" type="number" min="0" value="5000" class="input">
+                </div>
               </div>
-              <div>
-                <div class="label">YouTube: comments/video</div>
-                <input id="ytComments" type="number" min="0" value="60" class="input">
-              </div>
-              <div>
-                <div class="label">YouTube: min views</div>
-                <input id="ytMinViews" type="number" min="0" value="5000" class="input">
-              </div>
-            </div>
 
-            <div class="grid cols-3" style="margin-top:8px">
-              <div>
-                <div class="label">Reddit: max posts</div>
-                <input id="rdMaxPosts" type="number" min="0" value="40" class="input">
+              <div class="grid cols-3" style="margin-top:8px">
+                <div>
+                  <div class="label">Reddit: max posts</div>
+                  <input id="rdMaxPosts" type="number" min="0" value="40" class="input">
+                </div>
+                <div>
+                  <div class="label">Reddit: comments/post</div>
+                  <input id="rdComments" type="number" min="0" value="8" class="input">
+                </div>
+                <div>
+                  <div class="label">Reddit: min score</div>
+                  <input id="rdMinScore" type="number" min="0" value="5" class="input">
+                </div>
               </div>
-              <div>
-                <div class="label">Reddit: comments/post</div>
-                <input id="rdComments" type="number" min="0" value="8" class="input">
-              </div>
-              <div>
-                <div class="label">Reddit: min score</div>
-                <input id="rdMinScore" type="number" min="0" value="5" class="input">
-              </div>
-            </div>
-          </details>
-          <div class="row" style="margin-top:10px;align-items:center">
-            <button class="btn" id="explain">Explain</button>
-            <button class="btn primary" id="runBtn">Run</button>
-            <button class="btn" id="cancelBtn">Cancel</button>
-            <span class="small warn" id="runHint" style="display:none">Enable at least one source to run.</span>
+            </details>
           </div>
-          <hr class="sep"/>
-          <div class="label">Command preview</div>
-          <textarea id="cmd" class="input mono" rows="3" spellcheck="false" style="flex:1;min-height:70px">insight-mine collect --topic "" --since YYYY-MM-DD --subreddits "" --limit 40 --yt-videos 25</textarea>
+
+          <div class="card-ghost">
+            <div class="field-header">
+              <div>
+                <div class="label">Actions</div>
+                <div class="micro">Explain previews knobs; Run executes the configured collectors.</div>
+              </div>
+              <span class="pill ok">Safe to try</span>
+            </div>
+            <div class="action-bar">
+              <button class="btn" id="explain">Explain</button>
+              <button class="btn primary" id="runBtn">Run</button>
+              <button class="btn" id="cancelBtn">Cancel</button>
+              <span class="small warn" id="runHint" style="display:none">Enable at least one source to run.</span>
+            </div>
+            <div class="action-hint">✅ Ready when at least one source is on. Changes auto-update the command below.</div>
+            <hr class="sep"/>
+            <div class="label">Command preview</div>
+            <textarea id="cmd" class="input mono" rows="3" spellcheck="false" style="flex:1;min-height:70px">insight-mine collect --topic "" --since YYYY-MM-DD --subreddits "" --limit 40 --yt-videos 25</textarea>
+          </div>
         </div>
 
-        <div>
-          <div class="row" style="justify-content:space-between">
-            <div class="label">Connector status</div>
-            <div class="row">
+        <div class="collect-right" style="display:flex;flex-direction:column;gap:10px">
+          <div class="card-ghost">
+            <div class="field-header">
+              <div>
+                <div class="label">Connector status</div>
+                <div class="micro">Stays pinned while you tweak inputs.</div>
+              </div>
+              <span class="pill ghost">Run readiness</span>
+            </div>
+            <div class="row soft-wrap" style="gap:8px;margin-bottom:6px">
               <span class="status-chip status-ok" id="ytStatus">YouTube: enabled</span>
               <span class="status-chip" id="trStatus">Transcripts: off</span>
               <span class="status-chip status-ok" id="rdStatus">Reddit: enabled</span>
             </div>
-          </div>
-          <div class="label" style="margin-top:6px">Progress (overall)</div>
-          <div class="progress"><div id="progOverall"></div></div>
-          <div class="grid cols-3" style="margin-top:8px">
-            <div id="ytProgWrap">
-              <div class="label">YouTube</div>
-              <div class="progress"><div id="progYT"></div></div>
-            </div>
-            <div id="rdProgWrap">
-              <div class="label">Reddit</div>
-              <div class="progress"><div id="progRD"></div></div>
-            </div>
-            <div>
-              <div class="label">Items</div>
-              <div class="item-chips">
-                <div class="item-chip"><span class="small">YouTube</span> <span class="n" id="ytCount">0</span></div>
-                <div class="item-chip"><span class="small">Reddit</span> <span class="n" id="rdCount">0</span></div>
+            <div class="label">Progress</div>
+            <div class="progress big"><div id="progOverall"></div></div>
+            <div class="stats-grid">
+              <div class="stat-card" id="ytProgWrap">
+                <div class="stat-title">YouTube</div>
+                <div class="progress mini"><div id="progYT"></div></div>
+              </div>
+              <div class="stat-card" id="rdProgWrap">
+                <div class="stat-title">Reddit</div>
+                <div class="progress mini"><div id="progRD"></div></div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-title">Items so far</div>
+                <div class="item-chips">
+                  <div class="item-chip"><span class="small">YouTube</span> <span class="n" id="ytCount">0</span></div>
+                  <div class="item-chip"><span class="small">Reddit</span> <span class="n" id="rdCount">0</span></div>
+                </div>
               </div>
             </div>
+            <div class="section-note">Tip: switch tabs while a run is active—progress stays visible.</div>
           </div>
-          <div class="label" style="margin-top:8px">Live log <span id="liveSpinner" class="spinner hidden"></span><span id="liveCheck" class="spinner-check">✔</span></div>
-          <div class="copy-wrap">
-            <div id="log" class="log resizable copy-target" data-min="140" style="padding-right:40px"></div>
-            <button class="copy-btn" type="button" onclick="copyText($('#log'))" title="Copy log">⧉</button>
-          </div>
-          <div class="row" style="margin-top:6px;justify-content:flex-end">
-            <button class="btn small" id="exportLog">Export log</button>
+
+          <div class="card-ghost">
+            <div class="field-header">
+              <div class="label">Live log</div>
+              <div class="pill ghost">Streamed updates</div>
+            </div>
+            <div class="label" style="margin-top:2px">Messages <span id="liveSpinner" class="spinner hidden"></span><span id="liveCheck" class="spinner-check">✔</span></div>
+            <div class="copy-wrap">
+              <div id="log" class="log resizable copy-target" data-min="140" style="padding-right:40px"></div>
+              <button class="copy-btn" type="button" onclick="copyText($('#log'))" title="Copy log">⧉</button>
+            </div>
+            <div class="row" style="margin-top:6px;justify-content:flex-end">
+              <button class="btn small" id="exportLog">Export log</button>
+            </div>
           </div>
         </div>
       </div>
-      <div class="small" style="margin-top:6px">This mock simulates a run—no external APIs are called.</div>
+      <div class="small" style="margin-top:6px">Runs use your configured connectors and env; review settings before starting.</div>
     </div>
 
     <!-- RESULTS -->
@@ -728,6 +855,36 @@ function wrapWithCopy(el, title="Copy"){
   btn.addEventListener("click", ()=>copyText(el));
   wrap.appendChild(btn);
   return btn;
+}
+function gentlyPulse(el){
+  if(!el) return;
+  el.classList.add("active-pulse");
+  setTimeout(()=> el.classList.remove("active-pulse"), 260);
+}
+function wireQuickSince(){
+  const since = $("#since");
+  $all(".quick-since").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const days=parseInt(btn.dataset.days||"0",10);
+      if(!since || Number.isNaN(days)) return;
+      const d=new Date(); d.setDate(d.getDate()-days);
+      since.value = d.toISOString().slice(0,10);
+      gentlyPulse(since); gentlyPulse(btn);
+      updateCmd();
+    });
+  });
+}
+function wireTopicIdeas(){
+  const topic = $("#topic");
+  $all(".topic-idea").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      if(!topic) return;
+      topic.value = btn.dataset.topic || "";
+      topic.focus();
+      gentlyPulse(topic); gentlyPulse(btn);
+      updateCmd();
+    });
+  });
 }
 
 // State
@@ -1093,6 +1250,8 @@ window.addEventListener("load", ()=>{
   bindConnectorEvents();
   updateConnectorUI();
   bindViewSeg();
+  wireQuickSince();
+  wireTopicIdeas();
   wrapWithCopy($("#cmd"), "Copy command");
   // Log copy button is now in HTML directly
   // v16: new storage key to avoid loading old cached runs with stale link text
@@ -1826,7 +1985,7 @@ function fetchTranscript(id, btn, modeOverride){
   
   // Check if pywebview bridge is available
   const hasBridge = !!(window.pywebview && window.pywebview.api && window.pywebview.api.fetch_transcript);
-  if(btn){ btn.textContent = hasBridge ? "[4] Calling API..." : "[4] No bridge, mock..."; }
+  if(btn){ btn.textContent = hasBridge ? "[4] Calling API..." : "[4] No bridge, demo mode..."; }
   
   if(hasBridge){
     const runId = run.id || '';
@@ -1853,7 +2012,7 @@ function fetchTranscript(id, btn, modeOverride){
     return;
   }
   
-  // Fallback: mock data for standalone HTML
+  // Fallback: demo data for standalone HTML
   setTimeout(()=>{
     const txt=fakeTranscript(); it.transcript=txt;
     if(block){ block.style.display="block"; }

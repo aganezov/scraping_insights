@@ -66,3 +66,4 @@
 - No migrations, no multi-table schemas, no background DB jobs, no ORM.
 - No per-user or auth data stored; only content items and manifest metadata.
 
+
