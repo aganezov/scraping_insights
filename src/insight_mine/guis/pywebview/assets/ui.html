@@ -797,7 +797,8 @@ function safeMatchMedia(query){
   catch(_) { return false; }
 }
 const COLLECT_HERO_PREF_KEY = "im_collect_hero_hidden";
-let collectHeroHidden = safeStorageGet(COLLECT_HERO_PREF_KEY) === "1";
+const collectHeroPref = safeStorageGet(COLLECT_HERO_PREF_KEY);
+let collectHeroHidden = collectHeroPref === null ? true : collectHeroPref === "1";
 // ---- Theme Toggle ----
 (function initTheme(){
   const saved = safeStorageGet("im_theme");

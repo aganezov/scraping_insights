@@ -65,6 +65,7 @@ def test_active_ui_collect_hero_is_dismissible_with_updated_topic_chips():
     assert 'id="hideCollectHero"' in html
     assert 'id="showCollectHero"' in html
     assert 'COLLECT_HERO_PREF_KEY' in html
+    assert 'collectHeroPref === null ? true : collectHeroPref === "1"' in html
     assert 'data-topic="JetBrains"' in html
     assert 'data-topic="Coding"' in html
     assert 'data-topic="Software Development"' in html

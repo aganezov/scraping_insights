@@ -274,6 +274,7 @@ def _snapshot(win: Any) -> dict[str, Any]:
         win,
         """
         (() => ({
+          collectHeroHidden: document.getElementById('collectHero')?.classList.contains('hidden') || false,
           redditSelector: document.getElementById('redditSelector')?.value || '',
           topic: document.getElementById('topic')?.value || '',
           since: document.getElementById('since')?.value || '',
@@ -307,20 +308,22 @@ def _snapshot(win: Any) -> dict[str, Any]:
 def _exercise_interactions(win: Any, scenario: Scenario) -> dict[str, bool]:
     checks: dict[str, bool] = {}
 
-    _click(win, "hideCollectHero")
-    time.sleep(0.1)
-    checks["collect_intro_hides"] = bool(
-        _json_eval(
-            win,
-            "document.getElementById('collectHero')?.classList.contains('hidden') && !document.getElementById('collectHeroReveal')?.classList.contains('hidden')",
-        )
-    )
+    checks["collect_intro_hidden_by_default"] = bool(_snapshot(win).get("collectHeroHidden"))
+
     _click(win, "showCollectHero")
     time.sleep(0.1)
-    checks["collect_intro_restores"] = bool(
+    checks["collect_intro_reveals"] = bool(
         _json_eval(
             win,
             "!document.getElementById('collectHero')?.classList.contains('hidden') && document.getElementById('collectHeroReveal')?.classList.contains('hidden')",
+        )
+    )
+    _click(win, "hideCollectHero")
+    time.sleep(0.1)
+    checks["collect_intro_hides_again"] = bool(
+        _json_eval(
+            win,
+            "document.getElementById('collectHero')?.classList.contains('hidden') && !document.getElementById('collectHeroReveal')?.classList.contains('hidden')",
         )
     )
 
