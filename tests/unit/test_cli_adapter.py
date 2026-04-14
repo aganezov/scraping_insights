@@ -66,6 +66,24 @@ def test_build_collect_cmd_uses_supported_cli_flags(tmp_path):
     assert "--limit" not in cmd
 
 
+def test_build_collect_cmd_defaults_reddit_to_auto_with_scrape_fallback(tmp_path):
+    k = {
+        "topic": "t",
+        "since": "2025-01-01",
+        "lang": "en",
+        "connectors": {"youtube": False, "reddit": True},
+        "yt_videos": 0,
+        "reddit_limit": 3,
+        "reddit_comments": 4,
+        "reddit_source": "search",
+    }
+    cmd, _, _ = build_collect_cmd(k, {}, tmp_path, create_dirs=False)
+    assert "--reddit-mode" in cmd
+    mode_idx = cmd.index("--reddit-mode")
+    assert cmd[mode_idx + 1] == "auto"
+    assert "--allow-scraping" in cmd
+
+
 def test_normalize_collect_argv_enforces_source_toggles():
     argv = [
         "insight-mine", "collect",
@@ -87,3 +105,16 @@ def test_normalize_collect_argv_enforces_source_toggles():
     assert "--yt-comments-per-video" not in normalized
     assert "--allow-scraping" in normalized
 
+
+def test_normalize_collect_argv_keeps_auto_mode_with_scrape_fallback():
+    argv = [
+        "insight-mine", "collect",
+        "--langs", "en",
+        "--reddit-limit", "3",
+        "--reddit-comments", "2",
+        "--reddit-mode", "auto",
+    ]
+
+    normalized = normalize_collect_argv(argv, selected={"youtube": True, "reddit": True})
+
+    assert "--allow-scraping" in normalized

@@ -102,7 +102,7 @@ def normalize_collect_argv(argv: list[str], *, selected: Dict[str, bool] | None 
         normalized += ["--reddit-mode", "off", "--reddit-limit", "0", "--reddit-comments", "0"]
     else:
         mode = _value_of(normalized, "--reddit-mode")
-        if mode in (None, "scrape") and "--allow-scraping" not in normalized:
+        if mode in (None, "scrape", "auto") and "--allow-scraping" not in normalized:
             normalized.append("--allow-scraping")
 
     return normalized
@@ -147,12 +147,13 @@ def build_collect_cmd(k: dict, env: dict, out_root: Path, *, run_id: str | None 
 
     # Reddit block
     if k.get("connectors", {}).get("reddit", True) and k.get("reddit_limit", 0) > 0:
+        reddit_mode = k.get("reddit_mode", "auto")
         reddit_source = k.get("reddit_source", "search")
         cmd += ["--reddit-limit", str(k.get("reddit_limit", 40)),
                 "--reddit-comments", str(k.get("reddit_comments", 8)),
                 "--reddit-min-score", str(k.get("reddit_min_score", 0)),
                 "--reddit-min-comment-score", str(k.get("reddit_min_comment_score", 0)),
-                "--reddit-mode", k.get("reddit_mode", "scrape"),
+                "--reddit-mode", reddit_mode,
                 "--reddit-source", reddit_source]
         if reddit_source == "search":
             query = (k.get("reddit_query") or k.get("topic") or "").strip()
@@ -162,7 +163,7 @@ def build_collect_cmd(k: dict, env: dict, out_root: Path, *, run_id: str | None 
                     "--reddit-t", k.get("reddit_t", "all")]
         elif reddit_source == "top":
             cmd += ["--reddit-top-t", k.get("reddit_top_t", "week")]
-        if k.get("reddit_mode", "scrape") == "scrape":
+        if reddit_mode in {"auto", "scrape"}:
             cmd += ["--allow-scraping"]
 
     # Output folder (one run = one subdir)

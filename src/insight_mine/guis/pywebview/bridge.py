@@ -434,7 +434,7 @@ class Bridge:
             "reddit_comments": rd.get("comments_per_post", 8),
             "reddit_min_score": rd.get("min_score", 5),
             "reddit_min_comment_score": rd.get("min_comment_score", 0),
-            "reddit_mode": rd.get("mode") or "scrape",
+            "reddit_mode": rd.get("mode") or "auto",
             "reddit_source": rd.get("selector", "search"),
             "reddit_query": rd.get("query", ""),
             "reddit_sort": rd.get("search_sort", "relevance"),

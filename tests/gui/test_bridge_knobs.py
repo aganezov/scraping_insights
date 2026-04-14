@@ -19,6 +19,7 @@ def test_normalize_knobs_flattens_v15_structure(monkeypatch, tmp_path):
     assert out["lang"] == "es"
     assert out["reddit_comments"] == 3
     assert out["reddit_source"] == "search"
+    assert out["reddit_mode"] == "auto"
 
 
 def test_build_command_returns_valid_cli(monkeypatch, tmp_path):
@@ -30,4 +31,3 @@ def test_build_command_returns_valid_cli(monkeypatch, tmp_path):
     cmd = result["cmd"]
     assert "collect" in cmd
     assert "k1" in result["cmd_string"]
-

@@ -43,7 +43,7 @@ def test_active_ui_preview_uses_supported_cli_flags():
     html = _ui_html()
 
     assert "--yt-max-comments" in html
-    assert "--reddit-mode scrape" in html
+    assert "--reddit-mode auto" in html
     assert "--reddit-limit" in html
     assert "--allow-scraping" in html
     assert "--yt-comments-per-video" not in html
@@ -70,6 +70,7 @@ def test_active_ui_collect_hero_is_dismissible_with_updated_topic_chips():
     assert 'data-topic="Software Development"' in html
     assert 'data-topic="EV charging anxiety"' not in html
     assert 'id="openSourceUpdate"' in html
+    assert 'reddit_mode: "auto"' in html
 
 
 def test_pywebview_assets_only_ship_live_ui_entrypoint():

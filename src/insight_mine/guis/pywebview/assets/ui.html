@@ -1595,7 +1595,7 @@ function buildCli(knobs){
     ` --yt-videos 0 --yt-max-comments 0`;
   const rd=knobs.advanced.rd;
   const rdFlags = knobs.connectors.reddit ?
-    ` --reddit-mode scrape` +
+    ` --reddit-mode auto` +
     ` --reddit-limit ${rd.max_posts}` +
     ` --reddit-comments ${rd.comments_per_post}` +
     ` --reddit-min-score ${rd.min_score}` +
@@ -1627,8 +1627,8 @@ function collectKnobs(){
     advanced: {
       language: $("#lang").value,
       dedupe: $("#dedupe").value,
-      reddit_method: "scrape",
-      reddit_mode: "scrape",
+      reddit_method: "auto",
+      reddit_mode: "auto",
       rd: {
         selector: $("#redditSelector").value,
         query: $("#redditSelector").value==="search" ? ($("#redditQuery").value||"") : "",
