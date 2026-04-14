@@ -7,7 +7,11 @@ from types import ModuleType
 
 def _stub_google_client():
     """Provide a stub googleapiclient so status import works without the real dependency."""
-    if importlib.util.find_spec("googleapiclient.discovery") is not None:
+    try:
+        spec = importlib.util.find_spec("googleapiclient.discovery")
+    except ModuleNotFoundError:
+        spec = None
+    if spec is not None:
         return
     ga = ModuleType("googleapiclient")
     discovery = ModuleType("googleapiclient.discovery")
@@ -22,7 +26,11 @@ def _stub_google_client():
 
 
 def _stub_praw():
-    if importlib.util.find_spec("praw") is not None:
+    try:
+        spec = importlib.util.find_spec("praw")
+    except (ModuleNotFoundError, ValueError):
+        spec = None
+    if spec is not None:
         return
     praw_stub = ModuleType("praw")
 

@@ -1,5 +1,4 @@
 # Copies a packaged seed env into Application Support on first run
-import os
 import shutil
 import sys
 from pathlib import Path

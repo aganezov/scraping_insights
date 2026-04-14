@@ -1,9 +1,13 @@
 from __future__ import annotations
-import os, time, logging, requests, random
+import os
+import time
+import logging
+import requests
+import random
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Tuple, Iterable, Optional
 from dataclasses import dataclass
-import itertools, math
+import itertools
 from ..models import Item
 from ..config import get_secret
 from ..utils.text import keep_by_lang
@@ -45,11 +49,25 @@ def _rd_iter_candidates(session: requests.Session, topic: str, params: _RdFUPara
     subs = params.subreddits or ["all"]
     num_subs = len(subs)
     consecutive_empty = 0  # Track consecutive subreddits with no new posts
+    selector = (params.selector or "search").lower().strip()
+    query = (params.search_query or topic or "").strip()
     
     for sub in itertools.cycle(subs):
         remaining = max(1, min(params.budget, MAX_PER_PAGE))
         found_any = False
-        for pdata in _search_listing(session, topic, sub if sub != "all" else None, remaining):
+        subreddit = sub if sub != "all" else None
+        if selector == "search":
+            iterator = _search_listing(
+                session,
+                query,
+                subreddit,
+                remaining,
+                sort=params.search_sort,
+                time_filter=params.search_time,
+            )
+        else:
+            iterator = _listing(session, subreddit, selector, remaining, top_time=params.top_time)
+        for pdata in iterator:
             pid = pdata.get("id")
             if not pid or pid in seen:
                 continue
@@ -84,7 +102,8 @@ def _rd_fetch_until_keep(session: requests.Session, topic: str, params: _RdFUPar
             break
 
         if not keep_fn(post):
-            if progress_cb: progress_cb({"reddit": rd_pct()})
+            if progress_cb:
+                progress_cb({"reddit": rd_pct()})
             continue
 
         cmts = fetch_comments_fn(post, params.comments_per_post) if params.comments_per_post > 0 else []
@@ -96,7 +115,8 @@ def _rd_fetch_until_keep(session: requests.Session, topic: str, params: _RdFUPar
         telemetry["rd_post_kept"] = telemetry.get("rd_post_kept", 0) + 1
         telemetry["rd_comment_kept"] = telemetry.get("rd_comment_kept", 0) + len(cmts)
 
-        if progress_cb: progress_cb({"reddit": rd_pct()})
+        if progress_cb:
+            progress_cb({"reddit": rd_pct()})
         if kept_posts >= params.target_keep:
             break
 
@@ -120,7 +140,7 @@ def _headers() -> Dict[str, str]:
     return {"User-Agent": ua, "Accept": "application/json"}
 
 
-def _get_json(s: requests.Session, url: str, params: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def _get_json(s: requests.Session, url: str, params: Dict[str, Any]) -> Any | None:
     for attempt in range(5):
         resp = s.get(url, params=params, headers=_headers(), timeout=TIMEOUT_S)
         if resp.status_code == 429:
@@ -142,12 +162,63 @@ def _get_json(s: requests.Session, url: str, params: Dict[str, Any]) -> Optional
     return None
 
 
-def _search_listing(s: requests.Session, topic: str, subreddit: Optional[str], remaining: int):
+def _search_listing(
+    s: requests.Session,
+    topic: str,
+    subreddit: Optional[str],
+    remaining: int,
+    *,
+    sort: str = "new",
+    time_filter: str = "all",
+):
     url = f"{BASE}/search.json" if not subreddit else f"{BASE}/r/{subreddit}/search.json"
     params: Dict[str, Any] = {
-        "q": topic, "sort": "new", "t": "all", "limit": min(MAX_PER_PAGE, max(1, remaining)),
+        "q": topic, "sort": sort, "t": time_filter, "limit": min(MAX_PER_PAGE, max(1, remaining)),
         "restrict_sr": 1 if subreddit else 0, "raw_json": 1, "include_over_18": "on",
     }
+    pulled = 0
+    after = None
+    while pulled < remaining:
+        if after:
+            params["after"] = after
+        data = _get_json(s, url, params)
+        if not data:
+            break
+        children = (data.get("data") or {}).get("children") or []
+        if not children:
+            break
+        for it in children:
+            if it.get("kind") != "t3":
+                continue
+            yield it["data"]
+            pulled += 1
+            if pulled >= remaining:
+                break
+        after = (data.get("data") or {}).get("after")
+        if not after:
+            break
+        time.sleep(SLEEP_S)
+
+
+def _listing(
+    s: requests.Session,
+    subreddit: Optional[str],
+    selector: str,
+    remaining: int,
+    *,
+    top_time: str = "week",
+):
+    selector = selector if selector in {"hot", "new", "top"} else "hot"
+    root = "r/all" if not subreddit else f"r/{subreddit}"
+    url = f"{BASE}/{root}/{selector}.json"
+    params: Dict[str, Any] = {
+        "limit": min(MAX_PER_PAGE, max(1, remaining)),
+        "raw_json": 1,
+        "include_over_18": "on",
+    }
+    if selector == "top":
+        params["t"] = top_time
+
     pulled = 0
     after = None
     while pulled < remaining:
@@ -189,7 +260,8 @@ def _fetch_top_comments(s: requests.Session, permalink: str, max_comments: int, 
     data = _get_json(s, url, params)
     if not data or not isinstance(data, list) or len(data) < 2:
         return items
-    comments_listing = ((data[1] or {}).get("data") or {}).get("children") or []
+    payload = data[1] if len(data) > 1 and isinstance(data[1], dict) else {}
+    comments_listing = ((payload.get("data") or {}).get("children")) or []
     pulled = 0
     for child in comments_listing:
         if child.get("kind") != "t1":
@@ -228,7 +300,23 @@ def _fetch_top_comments(s: requests.Session, permalink: str, max_comments: int, 
     return items
 
 
-def collect(topic: str, since_iso: str, limit_posts: int = 40, comments_per_post: int = 8, subreddits: List[str] | None = None, min_score: int = 0, min_comment_score: int = 0, langs: Iterable[str] = (), stats: Dict[str, int] | None = None) -> List[Item]:
+def collect(
+    topic: str,
+    since_iso: str,
+    limit_posts: int = 40,
+    comments_per_post: int = 8,
+    subreddits: List[str] | None = None,
+    min_score: int = 0,
+    min_comment_score: int = 0,
+    langs: Iterable[str] = (),
+    *,
+    selector: str = "search",
+    search_query: str = "",
+    search_sort: str = "new",
+    search_time: str = "all",
+    top_time: str = "week",
+    stats: Dict[str, int] | None = None,
+) -> List[Item]:
     ok, why = status()
     if not ok:
         log.info("Reddit scraping disabled: %s", why)
@@ -248,9 +336,12 @@ def collect(topic: str, since_iso: str, limit_posts: int = 40, comments_per_post
         budget=max(1, max(0, limit_posts) * 12),
         comments_per_post=comments_per_post,
         min_score=min_score,
-        selector="hot",
+        selector=(selector or "search"),
         subreddits=[sr.replace("r/", "").strip() for sr in (subreddits or []) if sr.strip()],
-        search_query=topic,
+        search_query=(search_query or topic),
+        search_sort=(search_sort or "new"),
+        search_time=(search_time or "all"),
+        top_time=(top_time or "week"),
         since_ts=since_ts,
     )
 

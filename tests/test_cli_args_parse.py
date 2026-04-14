@@ -46,3 +46,20 @@ def test_langs_resolves_with_env_fallback(monkeypatch):
     effective = resolve_settings(args)
 
     assert effective["langs"] == ["en", "es"]
+
+
+def test_legacy_lang_alias_and_no_dedupe_parse():
+    parser = build_parser()
+    args = parser.parse_args(["collect", "--topic", "t", "--lang", "en,es", "--no-dedupe"])
+
+    assert args.langs == "en,es"
+    assert args.dedupe is False
+
+
+def test_preset_sets_reddit_limit_when_flag_not_explicit():
+    parser = build_parser()
+    args = parser.parse_args(["collect", "--topic", "t", "--preset", "strict"])
+
+    effective = resolve_settings(args)
+
+    assert effective["reddit_limit"] == 20

@@ -1,5 +1,4 @@
 import sys
-import time
 
 from insight_mine.guis.pywebview.cli_runner import CliRunner
 

@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import json
 import os
 import shlex
-import shutil
 import subprocess
 import logging
 import concurrent.futures
@@ -25,10 +23,11 @@ YTTI_FREE_TIMEOUT_SEC = int(os.getenv("YTTI_FREE_TIMEOUT_SEC", "15"))
 
 def fetch_transcript(video_id: str, lang: str, *, allow_paid: bool = True) -> tuple[str, str]:
     """
-    Fetch a transcript via youtube-transcript-api first, then CLI, then HTTP.
+    Fetch a transcript via youtube-transcript-api first, then an optional external
+    command template, then HTTP.
     Returns (transcript_text, source) where source is one of:
     - "free" (youtube-transcript-api)
-    - "cli" (CLI tool)
+    - "cli" (external command template)
     - "paid" (youtube-transcript.io API)
     """
     global _yt_api_last_error
@@ -129,7 +128,7 @@ def _yt_api_fetch_core(video_id: str, lang: str) -> Optional[str]:
     if not transcript_list:
         try:
             tlist = api.list(video_id)
-            t = tlist.find_transcript(langs) if hasattr(tlist, "find_transcript") else (tlist[0] if tlist else None)
+            t = tlist.find_transcript(langs) if hasattr(tlist, "find_transcript") else next(iter(tlist), None)
             if t:
                 transcript_list = t.fetch()
         except Exception as e:
@@ -192,10 +191,12 @@ def _format_transcript(text: str, target_para_len: int = 500) -> str:
 
 def _fetch_via_cli(video_id: str, lang: str) -> Optional[str]:
     template = os.getenv("IM_CLI_TRANSCRIPT_CMD")
-    if template:
+    if not template:
+        return None
+    try:
         cmd = shlex.split(template.format(video_id=video_id, lang=lang))
-    else:
-        cmd = [_resolve_cli_bin(), "transcripts", "fetch", "--video-id", video_id, "--lang", lang]
+    except Exception:
+        return None
     try:
         proc = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
     except FileNotFoundError:
@@ -258,9 +259,3 @@ def _fetch_via_http(video_id: str, lang: str) -> Optional[str]:
                 raw = " ".join(t.strip() for t in text_parts if t).strip()
                 return _format_transcript(raw)
     return None
-
-
-def _resolve_cli_bin() -> str:
-    candidate = os.getenv("IM_CLI_BIN", "insight-mine")
-    resolved = shutil.which(candidate)
-    return resolved or candidate

@@ -1,5 +1,7 @@
 from __future__ import annotations
-import time, logging, praw
+import time
+import logging
+import praw
 from datetime import datetime, timezone
 from typing import List, Tuple, Iterable, Dict
 from ..models import Item

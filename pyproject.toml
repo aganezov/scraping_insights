@@ -19,13 +19,13 @@ dependencies = [
   "requests>=2.31.0",
   "langdetect>=1.0.9",
   "youtube-transcript-api>=0.6.2",
-  "pytest>=8.0.0",
-  "hypothesis>=6.148.0",
 ]
 
 [project.scripts]
 insight-mine = "insight_mine.cli:main"
 insight-mine-gui = "insight_mine.guis.pywebview.app:main"
+insight-mine-gui-smoke = "insight_mine.guis.pywebview.smoke:main"
+insight-mine-fake-cli = "insight_mine.testing.fake_cli:main"
 
 [project.optional-dependencies]
 gui = [
@@ -42,6 +42,23 @@ packaging = [
   "pyinstaller-hooks-contrib>=2024.10",
 ]
 
+[dependency-groups]
+dev = [
+  "pytest>=8.0.0",
+  "hypothesis>=6.148.0",
+  "ruff>=0.14.0",
+  "pyright>=1.1.406",
+]
+
+[tool.uv]
+default-groups = ["dev"]
+
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 addopts = "-q"
+
+[tool.pyright]
+include = ["src"]
+exclude = ["packaging", "tests"]
+reportMissingImports = "none"
+reportUnsupportedDunderAll = "none"

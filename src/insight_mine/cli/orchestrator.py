@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 import random
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List
 
 from .output import apply_variety_guard, as_dict, counts_by_kind, now_stamp, write_outputs
 from ..utils.text import dedupe_items
@@ -110,6 +110,11 @@ def run_collect(args, effective: Dict[str, Any], log: logging.Logger) -> int:
     reddit_min_score = effective["reddit_min_score"]
     reddit_min_comment_score = effective["reddit_min_comment_score"]
     reddit_max_comment_share = effective["reddit_max_comment_share"]
+    reddit_source = effective.get("reddit_source", "search")
+    reddit_query = effective.get("reddit_query", "")
+    reddit_sort = effective.get("reddit_sort", "new")
+    reddit_t = effective.get("reddit_t", "all")
+    reddit_top_t = effective.get("reddit_top_t", "week")
     yt_allow = effective["yt_allow"]
     yt_block = effective["yt_block"]
     subs = effective["subs"]
@@ -154,7 +159,9 @@ def run_collect(args, effective: Dict[str, Any], log: logging.Logger) -> int:
     elif mode == "scrape":
         if use_scrape:
             r_items = rds.collect(args.topic, args.since, limit_posts=reddit_limit, comments_per_post=reddit_comments,
-                                  subreddits=subs, min_score=reddit_min_score, min_comment_score=reddit_min_comment_score, langs=langs, stats=stat_rd)
+                                  subreddits=subs, min_score=reddit_min_score, min_comment_score=reddit_min_comment_score,
+                                  langs=langs, selector=reddit_source, search_query=reddit_query,
+                                  search_sort=reddit_sort, search_time=reddit_t, top_time=reddit_top_t, stats=stat_rd)
         else:
             logging.warning("Reddit scraping requested but disabled. Use --allow-scraping or ALLOW_SCRAPING=1.")
     elif mode == "off":
@@ -165,7 +172,9 @@ def run_collect(args, effective: Dict[str, Any], log: logging.Logger) -> int:
                                  subreddits=subs, min_score=reddit_min_score, min_comment_score=reddit_min_comment_score, langs=langs, stats=stat_rd_api)
         elif use_scrape:
             r_items = rds.collect(args.topic, args.since, limit_posts=reddit_limit, comments_per_post=reddit_comments,
-                                  subreddits=subs, min_score=reddit_min_score, min_comment_score=reddit_min_comment_score, langs=langs, stats=stat_rd)
+                                  subreddits=subs, min_score=reddit_min_score, min_comment_score=reddit_min_comment_score,
+                                  langs=langs, selector=reddit_source, search_query=reddit_query,
+                                  search_sort=reddit_sort, search_time=reddit_t, top_time=reddit_top_t, stats=stat_rd)
 
     items.extend(r_items)
     rd_progress = 40 if r_items else 0

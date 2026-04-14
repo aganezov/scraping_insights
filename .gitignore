@@ -14,3 +14,5 @@ run.log
 run.json
 *.app/
 .hypothesis/
+tmp/
+.codex/

@@ -1,5 +1,8 @@
 from __future__ import annotations
-import os, time, logging, urllib.parse
+import os
+import time
+import logging
+import urllib.parse
 from typing import List, Tuple, Optional
 import requests
 from datetime import datetime, timezone
@@ -102,7 +105,6 @@ def _collect_post_json(permalink: str, min_comment_score: int, lang: str | None,
         ))
 
     comments_listing = ((data[1] or {}).get("data") or {}).get("children") or []
-    pulled = 0
     for child in comments_listing:
         if child.get("kind") != "t1":
             continue

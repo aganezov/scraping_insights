@@ -1,5 +1,5 @@
 from __future__ import annotations
-import json, time
+import json
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -334,6 +334,26 @@ def _attach_transcript(parent: Dict[str, Any], entry: Dict[str, Any]) -> None:
 
 def map_items(raw_items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     parents: Dict[str, Dict[str, Any]] = {}
+    order: List[str] = []
+
+    for entry in raw_items:
+        entry_id = entry.get("id")
+        if entry.get("platform") == "youtube":
+            is_transcript = entry.get("title") == "Transcript" or (
+                isinstance(entry_id, str) and entry_id.endswith(":transcript")
+            )
+            if is_transcript:
+                continue
+        if entry.get("platform") == "youtube" and entry.get("title") and isinstance(entry_id, str):
+            if entry_id not in parents:
+                order.append(entry_id)
+            parents[entry_id] = _make_parent(entry)
+            continue
+        if isinstance(entry_id, str) and entry_id.startswith("t3_"):
+            if entry_id not in parents:
+                order.append(entry_id)
+            parents[entry_id] = _make_parent(entry)
+
     for entry in raw_items:
         platform = entry.get("platform")
         entry_id = entry.get("id")
@@ -344,9 +364,6 @@ def map_items(raw_items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
                 if parent:
                     _attach_transcript(parent, entry)
                 continue
-            if entry.get("title"):
-                parents[entry_id] = _make_parent(entry)
-                continue
             parent_key = entry.get("context", {}).get("videoId")
             parent = parents.get(parent_key)
             if parent:
@@ -354,13 +371,12 @@ def map_items(raw_items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             continue
         # Reddit
         if isinstance(entry_id, str) and entry_id.startswith("t3_"):
-            parents[entry_id] = _make_parent(entry)
             continue
         parent_key = entry.get("context", {}).get("post_id")
         parent = parents.get(parent_key)
         if parent:
             _attach_comment(parent, entry)
-    return list(parents.values())
+    return [parents[key] for key in order]
 
 
 def build_ui_run(run_id: str, run_dir: Path, knobs: dict) -> dict:

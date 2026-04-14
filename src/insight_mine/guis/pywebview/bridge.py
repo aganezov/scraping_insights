@@ -1,7 +1,17 @@
 from __future__ import annotations
-import json, os, re, shlex, subprocess, threading
+import json
+import os
+import re
+import shlex
+import shutil
+import subprocess
+import sys
+import threading
 from pathlib import Path
-import webview
+try:
+    import webview
+except Exception:  # pragma: no cover - optional for non-GUI tests
+    webview = None  # type: ignore[assignment]
 from ...utils.text import mask_secret
 
 from . import cli_adapter, storage, envutil
@@ -38,7 +48,23 @@ def _save_settings(s: dict) -> None:
 
 
 def _compose_env(env_path: Path) -> dict:
-    return envutil.compose_env(env_path)
+    env = envutil.compose_env(env_path)
+    if env.get("IM_CLI_BIN"):
+        return env
+
+    cli_name = "insight-mine.exe" if os.name == "nt" else "insight-mine"
+    venv_root = env.get("VIRTUAL_ENV") or os.environ.get("VIRTUAL_ENV") or ""
+    candidates = [
+        shutil.which(cli_name),
+        str(Path(venv_root).expanduser() / "bin" / cli_name) if venv_root else None,
+        str(Path.cwd() / ".venv" / "bin" / cli_name),
+        str(Path(sys.executable).resolve().with_name(cli_name)),
+    ]
+    for cand in candidates:
+        if cand and Path(cand).exists():
+            env["IM_CLI_BIN"] = str(Path(cand).resolve())
+            break
+    return env
 
 
 def _status_snapshot(env: dict) -> dict:
@@ -60,6 +86,55 @@ def _preview_env(env: dict, out_dir: str) -> str:
         f"ALLOW_SCRAPING={env.get('ALLOW_SCRAPING','0')}",
     ]
     return "\n".join(lines)
+
+
+def _main_window():
+    if webview is None:
+        return None
+    try:
+        windows = getattr(webview, "windows", None)
+        if not windows:
+            return None
+        return windows[0]
+    except Exception:
+        return None
+
+
+def _file_dialog(dialog_name: str, *args, **kwargs):
+    window = _main_window()
+    if window is None or webview is None:
+        raise RuntimeError("GUI window is not available")
+    dialog_enum = getattr(webview, "FileDialog", None)
+    dialog_kind = getattr(dialog_enum, dialog_name, None) if dialog_enum is not None else None
+    if dialog_kind is None:
+        raise RuntimeError(f"webview.FileDialog.{dialog_name} is not available")
+    return window.create_file_dialog(dialog_kind, *args, **kwargs)
+
+
+def _repo_checkout_root(start: Path | None = None) -> Path | None:
+    candidates = []
+    if start is not None:
+        candidates.append(start)
+    candidates.extend([Path.cwd(), Path(__file__).resolve()])
+    seen: set[Path] = set()
+    for candidate in candidates:
+        base = candidate if candidate.is_dir() else candidate.parent
+        for root in [base, *base.parents]:
+            if root in seen:
+                continue
+            seen.add(root)
+            if (root / ".git").exists():
+                return root
+    return None
+
+
+def _gui_relaunch_cmd() -> list[str]:
+    argv0 = sys.argv[0] or "insight-mine-gui"
+    argv = sys.argv[1:]
+    path = Path(argv0).expanduser()
+    if path.exists():
+        return [str(path.resolve()), *argv]
+    return [argv0, *argv]
 
 
 class Bridge:
@@ -94,7 +169,9 @@ class Bridge:
     def _send(self, typ: str, payload: dict) -> None:
         try:
             js = f'window.IMBridge.receive({json.dumps(typ)}, {json.dumps(payload)});'
-            webview.windows[0].evaluate_js(js)
+            window = _main_window()
+            if window is not None:
+                window.evaluate_js(js)
         except Exception as e:
             print("[IM] send error:", e)
 
@@ -223,8 +300,9 @@ class Bridge:
         except Exception:
             pass
         try:
-            if getattr(self, "window", None):
-                self.window.evaluate_js(
+            window = _main_window()
+            if window is not None:
+                window.evaluate_js(
                     f"(function(){{var el=document.getElementById('ytCount');"
                     f"if(el) el.textContent='{int(parents)}/{int(comments)}';}})();"
                 )
@@ -239,8 +317,10 @@ class Bridge:
             pass
         # Also try direct DOM update using the same mechanism as _send
         try:
+            window = _main_window()
             js = f"(function(){{var el=document.getElementById('rdCount');if(el)el.textContent='{int(parents)}/{int(comments)}';}})();"
-            webview.windows[0].evaluate_js(js)
+            if window is not None:
+                window.evaluate_js(js)
         except Exception:
             pass
 
@@ -260,10 +340,14 @@ class Bridge:
 
     def _emit_counts(self):
         payload = {}
-        if hasattr(self, "_yt_par"): payload["yt_par"] = int(self._yt_par)
-        if hasattr(self, "_yt_com"): payload["yt_com"] = int(self._yt_com)
-        if hasattr(self, "_rd_par"): payload["rd_par"] = int(self._rd_par)
-        if hasattr(self, "_rd_com"): payload["rd_com"] = int(self._rd_com)
+        if hasattr(self, "_yt_par"):
+            payload["yt_par"] = int(self._yt_par)
+        if hasattr(self, "_yt_com"):
+            payload["yt_com"] = int(self._yt_com)
+        if hasattr(self, "_rd_par"):
+            payload["rd_par"] = int(self._rd_par)
+        if hasattr(self, "_rd_com"):
+            payload["rd_com"] = int(self._rd_com)
         if payload:
             self._send("counts", payload)
 
@@ -275,8 +359,10 @@ class Bridge:
         }
         self._pmax = {"overall": 0, "youtube": 0, "reddit": 0}
         self._counts = {"yt_par": 0, "yt_com": 0, "rd_par": 0, "rd_com": 0}
-        self._yt_par = 0; self._yt_com = 0
-        self._rd_par = 0; self._rd_com = 0
+        self._yt_par = 0
+        self._yt_com = 0
+        self._rd_par = 0
+        self._rd_com = 0
         self._set_transcript_tracking(False)
         self._send("progress_reset", {"selected": self._selected})
         self._emit_yt_counts(0, 0)
@@ -335,7 +421,6 @@ class Bridge:
             "lang": lang, "langs": lang, "dedupe": dedupe_on,
             "transcripts": "off",  # CLI doesn't fetch transcripts; GUI does post-collection
             "transcript_mode": transcript_mode,  # Preserve for post-collection processing
-            "transcript_mode": transcript_mode,
             "connectors": k.get("connectors", {"youtube": True, "reddit": True}),
             # YT
             "yt_videos": yt.get("max_videos", 25),
@@ -350,7 +435,7 @@ class Bridge:
             "reddit_min_score": rd.get("min_score", 5),
             "reddit_min_comment_score": rd.get("min_comment_score", 0),
             "reddit_mode": rd.get("mode") or "scrape",
-            "reddit_source": rd.get("selector", "hot"),
+            "reddit_source": rd.get("selector", "search"),
             "reddit_query": rd.get("query", ""),
             "reddit_sort": rd.get("search_sort", "relevance"),
             "reddit_t": rd.get("search_time", "all"),
@@ -372,7 +457,7 @@ class Bridge:
         ok, err = envutil.write_env_file(self._env_path, text or "")
         if ok:
             # refresh cached env/settings so the next run uses the latest keys
-            self.env = envutil.compose_env(self._env_path)
+            self.env = _compose_env(self._env_path)
             self.settings["out_dir"] = envutil.get_output_dir_from_env(self._env_path)
             _save_settings(self.settings)
             self._send("out_dir_changed", {"out_dir": self.settings["out_dir"]})
@@ -381,8 +466,8 @@ class Bridge:
     def choose_env_file(self) -> dict:
         """Open file dialog to select a different .env file."""
         try:
-            sel = webview.windows[0].create_file_dialog(
-                webview.FileDialog.OPEN,
+            sel = _file_dialog(
+                "OPEN",
                 file_types=("Environment Files (*.env)", "All Files (*.*)"),
             )
             if not sel:
@@ -394,7 +479,7 @@ class Bridge:
             # Update internal state to use the new env file
             self._env_path = chosen_path
             self.settings["env_path"] = str(chosen_path)
-            self.env = envutil.compose_env(self._env_path)
+            self.env = _compose_env(self._env_path)
             self.settings["out_dir"] = envutil.get_output_dir_from_env(self._env_path)
             _save_settings(self.settings)
             self._send("out_dir_changed", {"out_dir": self.settings["out_dir"]})
@@ -409,8 +494,8 @@ class Bridge:
     def save_env_as(self, text: str) -> dict:
         """Open save dialog to write env content to a new file."""
         try:
-            dest = webview.windows[0].create_file_dialog(
-                webview.FileDialog.SAVE,
+            dest = _file_dialog(
+                "SAVE",
                 save_filename=".env",
                 file_types=("Environment Files (*.env)", "All Files (*.*)"),
             )
@@ -422,7 +507,7 @@ class Bridge:
             # Switch to using this new file
             self._env_path = dest_path
             self.settings["env_path"] = str(dest_path)
-            self.env = envutil.compose_env(self._env_path)
+            self.env = _compose_env(self._env_path)
             self.settings["out_dir"] = envutil.get_output_dir_from_env(self._env_path)
             _save_settings(self.settings)
             self._send("out_dir_changed", {"out_dir": self.settings["out_dir"]})
@@ -433,9 +518,7 @@ class Bridge:
     def export_log(self, text: str) -> dict:
         """Prompt for a file path and save the provided log text."""
         try:
-            dest = webview.windows[0].create_file_dialog(
-                webview.FileDialog.SAVE, save_filename="collect-log.txt"
-            )
+            dest = _file_dialog("SAVE", save_filename="collect-log.txt")
             if not dest:
                 return {"ok": False, "cancelled": True}
             path = dest if isinstance(dest, str) else dest[0]
@@ -443,6 +526,128 @@ class Bridge:
             return {"ok": True, "path": str(path)}
         except Exception as e:
             return {"ok": False, "error": str(e)}
+
+    def update_source_checkout(self) -> dict:
+        repo_root = _repo_checkout_root()
+        if repo_root is None:
+            return {"ok": False, "error": "Update is only available when Insight Mine is running from a git checkout."}
+
+        git = shutil.which("git")
+        if not git:
+            return {"ok": False, "error": "git is not installed or not on PATH."}
+
+        uv_bin = shutil.which("uv")
+        branch_cmd = subprocess.run(
+            [git, "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=repo_root,
+            text=True,
+            capture_output=True,
+        )
+        if branch_cmd.returncode != 0:
+            return {"ok": False, "error": (branch_cmd.stderr or branch_cmd.stdout or "Unable to determine current branch.").strip()}
+        branch = branch_cmd.stdout.strip()
+        if not branch or branch == "HEAD":
+            return {"ok": False, "error": "Update requires a named branch checkout, not detached HEAD."}
+
+        dirty = subprocess.run(
+            [git, "status", "--porcelain", "--untracked-files=no"],
+            cwd=repo_root,
+            text=True,
+            capture_output=True,
+        )
+        if dirty.returncode != 0:
+            return {"ok": False, "error": (dirty.stderr or dirty.stdout or "Unable to inspect git status.").strip()}
+        if dirty.stdout.strip():
+            return {"ok": False, "error": "Refusing to update from a dirty checkout. Commit or stash local changes first."}
+
+        before_cmd = subprocess.run(
+            [git, "rev-parse", "HEAD"],
+            cwd=repo_root,
+            text=True,
+            capture_output=True,
+        )
+        if before_cmd.returncode != 0:
+            return {"ok": False, "error": (before_cmd.stderr or before_cmd.stdout or "Unable to read current revision.").strip()}
+        before = before_cmd.stdout.strip()
+
+        pull_cmd = subprocess.run(
+            [git, "pull", "--ff-only"],
+            cwd=repo_root,
+            text=True,
+            capture_output=True,
+        )
+        if pull_cmd.returncode != 0:
+            return {"ok": False, "error": (pull_cmd.stderr or pull_cmd.stdout or "git pull failed.").strip()}
+
+        sync_result: dict[str, str | bool] = {"ok": True, "message": ""}
+        if uv_bin:
+            sync_cmd = subprocess.run(
+                [uv_bin, "sync", "--extra", "gui"],
+                cwd=repo_root,
+                text=True,
+                capture_output=True,
+            )
+            if sync_cmd.returncode != 0:
+                return {"ok": False, "error": (sync_cmd.stderr or sync_cmd.stdout or "uv sync failed.").strip()}
+            sync_result["message"] = (sync_cmd.stdout or sync_cmd.stderr or "").strip()
+        else:
+            sync_result = {
+                "ok": False,
+                "message": "git pull succeeded, but uv was not found on PATH; run `uv sync --extra gui` manually before restart.",
+            }
+
+        after_cmd = subprocess.run(
+            [git, "rev-parse", "HEAD"],
+            cwd=repo_root,
+            text=True,
+            capture_output=True,
+        )
+        if after_cmd.returncode != 0:
+            return {"ok": False, "error": (after_cmd.stderr or after_cmd.stdout or "Unable to read updated revision.").strip()}
+        after = after_cmd.stdout.strip()
+        updated = before != after
+        message = (
+            f"Updated {branch}: {before[:7]} -> {after[:7]}. Restart to use the new version."
+            if updated else
+            f"{branch} is already up to date."
+        )
+        if sync_result["message"]:
+            message = f"{message}\n\n{sync_result['message']}"
+        return {
+            "ok": True,
+            "updated": updated,
+            "branch": branch,
+            "before": before,
+            "after": after,
+            "message": message,
+            "repo_root": str(repo_root),
+        }
+
+    def restart_app(self) -> dict:
+        repo_root = _repo_checkout_root()
+        env = dict(os.environ)
+        env.update(self.env or {})
+        launch_errors: list[str] = []
+        candidates = [
+            _gui_relaunch_cmd(),
+            [sys.executable, "-m", "insight_mine.guis.pywebview.app", *sys.argv[1:]],
+        ]
+        for cmd in candidates:
+            try:
+                subprocess.Popen(
+                    cmd,
+                    cwd=str(repo_root or Path.cwd()),
+                    env=env,
+                    start_new_session=True,
+                )
+                window = _main_window()
+                if window is not None:
+                    window.destroy()
+                return {"ok": True}
+            except OSError as exc:
+                launch_errors.append(str(exc))
+                continue
+        return {"ok": False, "error": "; ".join(launch_errors) or "Failed to relaunch the app."}
 
     def get_settings(self) -> dict:
         """Return settings + a human preview to display in the mock Settings modal."""
@@ -473,7 +678,7 @@ class Bridge:
     def choose_out_dir(self) -> dict:
         """Open system dialog to set the output folder; persist to settings."""
         try:
-            sel = webview.windows[0].create_file_dialog(webview.FileDialog.FOLDER)
+            sel = _file_dialog("FOLDER")
             if not sel:
                 return {"ok": False, "cancelled": True}
             chosen = sel if isinstance(sel, str) else sel[0]
@@ -550,8 +755,8 @@ class Bridge:
         filename: Default filename suggestion
         """
         try:
-            dest = webview.windows[0].create_file_dialog(
-                webview.FileDialog.SAVE,
+            dest = _file_dialog(
+                "SAVE",
                 save_filename=filename,
                 file_types=("JSON Files (*.json)", "All Files (*.*)")
             )
@@ -571,8 +776,8 @@ class Bridge:
         filename: Default filename suggestion
         """
         try:
-            dest = webview.windows[0].create_file_dialog(
-                webview.FileDialog.SAVE,
+            dest = _file_dialog(
+                "SAVE",
                 save_filename=filename,
                 file_types=("CSV Files (*.csv)", "All Files (*.*)")
             )
@@ -599,8 +804,8 @@ class Bridge:
         Export text via save file dialog.
         """
         try:
-            dest = webview.windows[0].create_file_dialog(
-                webview.FileDialog.SAVE,
+            dest = _file_dialog(
+                "SAVE",
                 save_filename=filename,
                 file_types=("Text Files (*.txt)", "All Files (*.*)")
             )
@@ -658,7 +863,8 @@ class Bridge:
                                                              run_id=run_id_hint, create_dirs=True)
         self._send("log", {"line": f"Executing CLI: {' '.join(cmd)}"})
 
-        self.yt_count = 0; self.rd_count = 0
+        self.yt_count = 0
+        self.rd_count = 0
 
         runner = CliRunner(
             selected=self._selected,
@@ -702,7 +908,7 @@ class Bridge:
                 transcript_lang = getattr(self, '_transcript_lang', 'en')
                 self._send("log", {"line": f"[DEBUG] Finisher: transcript_mode={transcript_mode}"})
                 if transcript_mode in ("free", "any"):
-                    self._send("log", {"line": f"[DEBUG] Starting transcript fetch..."})
+                    self._send("log", {"line": "[DEBUG] Starting transcript fetch..."})
                     try:
                         self._fetch_transcripts_batch(run, run_dir, transcript_mode, transcript_lang)
                     except Exception as e:
@@ -714,16 +920,23 @@ class Bridge:
                 self._send("run_error", {"message": f"CLI exited with code {code}"})
             self.proc = None
 
-        runner.start(
-            cmd=cmd,
-            env=self.env,
-            on_log=lambda line: self._send("log", {"line": line}),
-            emit_progress=self._emit_progress,
-            emit_yt_counts=self._emit_yt_counts,
-            emit_rd_counts=self._emit_rd_counts,
-            emit_counts=self._emit_counts,
-            on_finished=on_finished,
-        )
+        try:
+            runner.start(
+                cmd=cmd,
+                env=self.env,
+                on_log=lambda line: self._send("log", {"line": line}),
+                emit_progress=self._emit_progress,
+                emit_yt_counts=self._emit_yt_counts,
+                emit_rd_counts=self._emit_rd_counts,
+                emit_counts=self._emit_counts,
+                on_finished=on_finished,
+            )
+        except OSError as e:
+            msg = f"Failed to launch CLI: {e}"
+            self._send("log", {"line": f"! {msg}"})
+            self._send("run_error", {"message": msg})
+            self.proc = None
+            return {"error": msg}
 
         self.proc = runner.proc
         self.reader_t = runner.reader_t
@@ -746,56 +959,17 @@ class Bridge:
         self._send("log", {"line": f"[DEBUG] transcript_mode={self._transcript_mode}"})
         self._set_transcript_tracking(self._transcript_mode in ("free", "any") and self._selected.get("youtube", True))
 
-        # Enforce source toggles at the boundary
-        if not self._selected.get("youtube", False) and "--yt-videos" not in cli_text:
-            cli_text += " --yt-videos 0 --yt-comments-per-video 0"
-        if not self._selected.get("reddit", False) and ("--reddit-limit" not in cli_text and " --limit " not in cli_text):
-            cli_text += " --reddit-limit 0 --rd-comments-per-post 0"
-        if self._selected.get("reddit", False) and "--allow-scraping" not in cli_text:
-            cli_text += " --allow-scraping"
-
         argv = shlex.split(cli_text)
         if not argv:
             return {"error": "bad command"}
 
         # Env from .env
-        self.env = envutil.compose_env(self._env_path)
+        self.env = _compose_env(self._env_path)
         bin_override = self.env.get("IM_CLI_BIN") or os.environ.get("IM_CLI_BIN")
         if argv[0] == "insight-mine" and bin_override:
             argv[0] = bin_override
 
-        # Normalize legacy flags from the mock to real CLI flags
-        def _normalize_args(av: list[str]) -> list[str]:
-            out: list[str] = []
-            mapping = {
-                "--yt-comments-per-video": "--yt-max-comments",
-                "--limit": "--reddit-limit",
-                "--rd-comments-per-post": "--reddit-comments",
-                "--rd-min-score": "--reddit-min-score",
-                "--rd-min-comment-score": "--reddit-min-comment-score",
-            }
-            drop = {"--reddit-source", "--reddit-query", "--reddit-sort", "--reddit-t", "--reddit-top-t"}
-            i = 0
-            n = len(av)
-            while i < n:
-                a = av[i]
-                if a in drop:
-                    if i + 1 < n and not av[i + 1].startswith("--"):
-                        i += 2
-                    else:
-                        i += 1
-                    continue
-                repl = mapping.get(a, a)
-                out.append(repl)
-                if i + 1 < n and not av[i + 1].startswith("--"):
-                    # carry value
-                    out.append(av[i + 1])
-                    i += 2
-                else:
-                    i += 1
-            return out
-
-        argv = _normalize_args(argv)
+        argv = cli_adapter.normalize_collect_argv(argv, selected=self._selected)
 
         # Ensure --out exists
         out_dir = None
@@ -854,7 +1028,7 @@ class Bridge:
                 transcript_lang = getattr(self, '_transcript_lang', 'en')
                 self._send("log", {"line": f"[DEBUG] Finisher: transcript_mode={transcript_mode}"})
                 if transcript_mode in ("free", "any"):
-                    self._send("log", {"line": f"[DEBUG] Starting transcript fetch..."})
+                    self._send("log", {"line": "[DEBUG] Starting transcript fetch..."})
                     try:
                         self._fetch_transcripts_batch(run, run_dir, transcript_mode, transcript_lang)
                     except Exception as e:
@@ -865,16 +1039,23 @@ class Bridge:
                 self._send("run_error", {"message": f"CLI exited with code {code}"})
             self.proc = None
 
-        runner.start(
-            cmd=argv,
-            env=self.env,
-            on_log=lambda line: self._send("log", {"line": line}),
-            emit_progress=self._emit_progress,
-            emit_yt_counts=self._emit_yt_counts,
-            emit_rd_counts=self._emit_rd_counts,
-            emit_counts=self._emit_counts,
-            on_finished=on_finished,
-        )
+        try:
+            runner.start(
+                cmd=argv,
+                env=self.env,
+                on_log=lambda line: self._send("log", {"line": line}),
+                emit_progress=self._emit_progress,
+                emit_yt_counts=self._emit_yt_counts,
+                emit_rd_counts=self._emit_rd_counts,
+                emit_counts=self._emit_counts,
+                on_finished=on_finished,
+            )
+        except OSError as e:
+            msg = f"Failed to launch CLI: {e}"
+            self._send("log", {"line": f"! {msg}"})
+            self._send("run_error", {"message": msg})
+            self.proc = None
+            return {"error": msg}
 
         self.proc = runner.proc
         self.reader_t = runner.reader_t
@@ -937,7 +1118,7 @@ class Bridge:
         try:
             mode = (mode or "free").lower().strip()
             log.info(f"[fetch_transcript] calling ytti_client.fetch_transcript... mode={mode}")
-            use_lang = lang or it.get("context", {}).get("lang") or "en"
+            use_lang = (lang or "en").strip() or "en"
             if (mode or "any") == "free":
                 # Strict free path: do not allow paid fallback
                 text = ytti_client._fetch_via_yt_transcript_api(video_id, use_lang)
@@ -968,7 +1149,7 @@ class Bridge:
             
             # Push transcript to UI
             self._send("transcript_ready", {"video_id": item_id, "text": text, "source": source})
-            log.info(f"[fetch_transcript] SUCCESS")
+            log.info("[fetch_transcript] SUCCESS")
             return {"ok": True, "text": text, "source": source}
         except ytti_client.TranscriptError as e:
             log.error(f"[fetch_transcript] TranscriptError: {e}")

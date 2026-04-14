@@ -43,7 +43,9 @@ def keep_by_lang(text: str, allowed: Iterable[str]) -> bool:
     if not allowed_set:
         return True  # no filter
     lang = detect_lang(text)
-    return lang in allowed_set if lang else False
+    # Fail open when detection is unavailable or inconclusive; dropping content
+    # only on uncertain detection is a worse default than keeping it.
+    return lang in allowed_set if lang else True
 
 
 def dedupe_items(items: List[dict]) -> List[dict]:

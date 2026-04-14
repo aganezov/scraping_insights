@@ -1,5 +1,3 @@
-import os
-from types import SimpleNamespace
 
 from insight_mine.guis.pywebview.bridge import Bridge
 
@@ -20,6 +18,7 @@ def test_normalize_knobs_flattens_v15_structure(monkeypatch, tmp_path):
     assert out["reddit_limit"] == 4
     assert out["lang"] == "es"
     assert out["reddit_comments"] == 3
+    assert out["reddit_source"] == "search"
 
 
 def test_build_command_returns_valid_cli(monkeypatch, tmp_path):
@@ -31,5 +30,4 @@ def test_build_command_returns_valid_cli(monkeypatch, tmp_path):
     cmd = result["cmd"]
     assert "collect" in cmd
     assert "k1" in result["cmd_string"]
-
 

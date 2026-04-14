@@ -1,7 +1,9 @@
+# ruff: noqa: E402
 import pytest
 
 hypothesis = pytest.importorskip("hypothesis")
-from hypothesis import given, strategies as st
+given = hypothesis.given
+st = hypothesis.strategies
 
 from insight_mine.cli.output import apply_variety_guard
 from insight_mine.utils.text import dedupe_items
@@ -34,5 +36,3 @@ def test_dedupe_is_idempotent(items):
     once = dedupe_items(items)
     twice = dedupe_items(once)
     assert once == twice
-
-

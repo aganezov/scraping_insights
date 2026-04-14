@@ -1,4 +1,6 @@
-PYTHON      ?= python3
+UV          ?= uv
+RUN         ?= $(UV) run
+PYTHON      ?= $(RUN) python
 VERSION     := $(shell cat packaging/VERSION)
 APP_NAME    := Insight Mine
 DIST_DIR    := dist
@@ -6,7 +8,38 @@ GUI_SPEC    := packaging/pyinstaller_gui.spec
 CLI_SPEC    := packaging/pyinstaller_cli.spec
 ICON        := packaging/app.icns
 
-.PHONY: version icon cli gui app clean distclean
+ENV_FILE    ?= .env
+
+.PHONY: version sync sync-gui setup-gui run-gui update-source-gui sync-app test gui-smoke gui-e2e-free icon cli gui app clean distclean
+
+sync:
+	$(UV) sync
+
+sync-gui:
+	$(UV) sync --extra gui
+
+setup-gui:
+	$(UV) python install 3.11
+	$(UV) sync --extra gui
+
+run-gui:
+	$(RUN) insight-mine-gui --env $(ENV_FILE)
+
+update-source-gui:
+	git pull --ff-only
+	$(UV) sync --extra gui
+
+sync-app:
+	$(UV) sync --extra gui --extra packaging
+
+test:
+	$(RUN) pytest
+
+gui-smoke:
+	$(RUN) insight-mine-gui-smoke --scenario fake-happy --report tmp/gui-smoke-report.json
+
+gui-e2e-free:
+	$(RUN) insight-mine-gui-smoke --scenario real-youtube-free --env $(ENV_FILE) --report tmp/gui-e2e-free-report.json
 
 version:
 	@echo $(VERSION)
@@ -37,4 +70,3 @@ clean:
 
 distclean: clean
 	rm -rf $(DIST_DIR)
-

@@ -1,5 +1,4 @@
 import json
-from pathlib import Path
 
 from insight_mine.guis.pywebview import storage
 
@@ -38,4 +37,47 @@ def test_list_runs_returns_created_runs(tmp_path):
     topics = {r["topic"] for r in runs}
     assert "t1" in topics and "t2" in topics
 
+
+def test_map_items_handles_comment_and_transcript_before_parent():
+    items = [
+        {
+            "platform": "youtube",
+            "id": "c1",
+            "title": None,
+            "text": "first comment",
+            "author": "commenter",
+            "created_at": "2025-01-01T00:00:00Z",
+            "url": "https://www.youtube.com/watch?v=v1&lc=c1",
+            "metrics": {"likes": 3},
+            "context": {"videoId": "v1"},
+        },
+        {
+            "platform": "youtube",
+            "id": "v1:transcript",
+            "title": "Transcript",
+            "text": "transcript body",
+            "author": None,
+            "created_at": "",
+            "url": "https://www.youtube.com/watch?v=v1",
+            "metrics": {},
+            "context": {"videoId": "v1"},
+        },
+        {
+            "platform": "youtube",
+            "id": "v1",
+            "title": "Video title",
+            "text": "video body",
+            "author": "channel",
+            "created_at": "2025-01-01T00:00:00Z",
+            "url": "https://www.youtube.com/watch?v=v1",
+            "metrics": {},
+            "context": {"channelId": "chan1"},
+        },
+    ]
+
+    parents = storage.map_items(items)
+
+    assert len(parents) == 1
+    assert parents[0]["comments"][0]["id"] == "c1"
+    assert parents[0]["transcript"] == "transcript body"
 

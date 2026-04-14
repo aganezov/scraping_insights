@@ -3,7 +3,6 @@ from pathlib import Path
 import json
 
 from insight_mine.cli.orchestrator import run_collect
-from insight_mine.cli.output import now_stamp
 
 
 def _effective_defaults():

@@ -19,7 +19,7 @@ class CliRunner:
         *,
         selected: Dict[str, bool],
         counts: Dict[str, int],
-        clamp_overall: Optional[Callable[[int], int]] = None,
+        clamp_overall: Optional[Callable[[int | None], int | None]] = None,
         parse_kept: Callable[[str, str], tuple[int, int]],
     ) -> None:
         self.selected = selected

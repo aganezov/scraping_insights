@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Insight Mine – Interactive Mock v15</title>
+  <title>Insight Mine</title>
 <style>
 :root{
   --bg:#0b0d10; --panel:#0f141b; --muted:#93a4b8; --text:#e5e7eb;
@@ -32,6 +32,10 @@ a:hover{text-decoration:underline}
 /* Collect: refreshed shell */
 .collect-panel{display:flex;flex-direction:column;gap:12px}
 .collect-hero{display:grid;grid-template-columns:1.2fr 1fr;gap:12px;padding:14px;border:1px solid var(--border);border-radius:12px;background:linear-gradient(140deg, rgba(96,165,250,.15), rgba(34,197,94,.08));box-shadow:0 10px 32px rgba(0,0,0,.24)}
+.collect-hero-main{display:flex;flex-direction:column;gap:8px}
+.collect-hero-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.collect-hero-reveal{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px dashed var(--border);border-radius:12px;background:var(--chip)}
+.collect-hero-reveal-copy{display:flex;flex-direction:column;gap:3px}
 .eyebrow{font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:2px}
 .hero-title{margin:0;font-size:22px;line-height:1.25;font-weight:800}
 .hero-copy{margin:4px 0 0;color:var(--muted);line-height:1.5}
@@ -59,7 +63,11 @@ a:hover{text-decoration:underline}
 .pill-switch{padding:6px 10px;border-radius:999px;border:1px dashed var(--border);background:var(--chip)}
 .pill-switch select{min-width:150px}
 .soft-wrap{flex-wrap:wrap}
+.card-stack{display:flex;flex-direction:column;gap:10px}
+.card-stack .field-header{margin-bottom:0}
+.quick-chips-spacious{margin-top:0;row-gap:10px}
 .action-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px}
+.action-bar-spacious{margin-top:0;row-gap:10px}
 .action-hint{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
 .section-note{margin-top:6px;color:var(--muted);font-size:12px}
 details.advanced{background:var(--chip);border:1px dashed var(--border);border-radius:10px;padding:10px}
@@ -219,7 +227,7 @@ th.sortable .sort-ind{font-size:11px;color:var(--muted)}
 <body>
   <div class="container">
     <div class="header">
-      <div class="h1">Insight Mine – Interactive Mock v15</div>
+      <div class="h1">Insight Mine</div>
       <span class="badge">Self‑contained HTML</span>
       <span class="badge">No network calls</span>
       <button class="theme-toggle" id="themeToggle" title="Toggle light/dark theme">
@@ -230,6 +238,7 @@ th.sortable .sort-ind{font-size:11px;color:var(--muted)}
         <div class="more-menu" id="moreMenu">
           <a href="#" id="openTelemetry">📊 Telemetry</a>
           <a href="#" id="openSettings">⚙️ Settings</a>
+          <a href="#" id="openSourceUpdate">⬇️ Update source checkout</a>
         </div>
       </div>
     </div>
@@ -241,9 +250,15 @@ th.sortable .sort-ind{font-size:11px;color:var(--muted)}
 
     <!-- COLLECT -->
     <div class="panel collect-panel" data-page="collect">
-      <div class="collect-hero">
-        <div>
-          <div class="eyebrow">Collect tab</div>
+      <div class="collect-hero" id="collectHero">
+        <div class="collect-hero-main">
+          <div class="collect-hero-head">
+            <div>
+              <div class="eyebrow">Collect tab</div>
+              <div class="micro">Optional overview</div>
+            </div>
+            <button class="btn small" id="hideCollectHero" type="button">Hide intro</button>
+          </div>
           <div class="hero-title">Refresh signals without leaving the flow</div>
           <p class="hero-copy">Dual‑source capture with quick presets, clearer status, and cleaner handoff.</p>
           <div class="pill-row">
@@ -266,6 +281,13 @@ th.sortable .sort-ind{font-size:11px;color:var(--muted)}
             <span class="pill ghost">New: topic nudge chips</span>
           </div>
         </div>
+      </div>
+      <div class="collect-hero-reveal hidden" id="collectHeroReveal">
+        <div class="collect-hero-reveal-copy">
+          <div class="eyebrow">Collect intro hidden</div>
+          <div class="micro">Bring back the optional collect overview when you want the quick tips and reminders.</div>
+        </div>
+        <button class="btn small" id="showCollectHero" type="button">Show intro</button>
       </div>
 
       <div class="grid cols-2 collect-grid" style="align-items:stretch">
@@ -294,7 +316,7 @@ th.sortable .sort-ind{font-size:11px;color:var(--muted)}
             </div>
           </div>
 
-          <div class="card-ghost">
+          <div class="card-ghost card-stack">
             <div class="field-header">
               <div>
                 <div class="label">Topic</div>
@@ -303,19 +325,19 @@ th.sortable .sort-ind{font-size:11px;color:var(--muted)}
               <span class="pill ghost">Step 2</span>
             </div>
             <input id="topic" class="input" placeholder="e.g., electric cars charging speed">
-            <div class="quick-chips">
-              <button class="quick-chip topic-idea" type="button" data-topic="EV charging anxiety">EV charging anxiety</button>
-              <button class="quick-chip topic-idea" type="button" data-topic="AI agent onboarding friction">AI agent onboarding friction</button>
-              <button class="quick-chip topic-idea" type="button" data-topic="Second-brain app comparisons">Second-brain app comparisons</button>
+            <div class="quick-chips quick-chips-spacious">
+              <button class="quick-chip topic-idea" type="button" data-topic="JetBrains">JetBrains</button>
+              <button class="quick-chip topic-idea" type="button" data-topic="Coding">Coding</button>
+              <button class="quick-chip topic-idea" type="button" data-topic="Software Development">Software Development</button>
             </div>
           </div>
 
-          <div class="card-ghost">
+          <div class="card-ghost card-stack">
             <div class="field-header">
               <div class="label">Recency</div>
               <div class="micro">Pick a window before diving into advanced knobs.</div>
             </div>
-            <div class="quick-chips">
+            <div class="quick-chips quick-chips-spacious">
               <button class="quick-chip quick-since" type="button" data-days="7">Last 7 days</button>
               <button class="quick-chip quick-since" type="button" data-days="30">Last 30 days</button>
               <button class="quick-chip quick-since" type="button" data-days="90">Last 90 days</button>
@@ -371,10 +393,10 @@ th.sortable .sort-ind{font-size:11px;color:var(--muted)}
                 <div>
                   <div class="label">Reddit: selection</div>
                   <select id="redditSelector" class="input">
-                    <option value="hot" selected>listing: hot</option>
+                    <option value="search" selected>search (with query)</option>
+                    <option value="hot">listing: hot</option>
                     <option value="top">listing: top</option>
                     <option value="new">listing: new</option>
-                    <option value="search">search (with query)</option>
                   </select>
                   <div class="small" style="margin-top:6px">
                     <em>Search</em> is query‑based with its own sort/time. 
@@ -449,7 +471,7 @@ th.sortable .sort-ind{font-size:11px;color:var(--muted)}
             </details>
           </div>
 
-          <div class="card-ghost">
+          <div class="card-ghost card-stack">
             <div class="field-header">
               <div>
                 <div class="label">Actions</div>
@@ -457,7 +479,7 @@ th.sortable .sort-ind{font-size:11px;color:var(--muted)}
               </div>
               <span class="pill ok">Safe to try</span>
             </div>
-            <div class="action-bar">
+            <div class="action-bar action-bar-spacious">
               <button class="btn" id="explain">Explain</button>
               <button class="btn primary" id="runBtn">Run</button>
               <button class="btn" id="cancelBtn">Cancel</button>
@@ -466,7 +488,7 @@ th.sortable .sort-ind{font-size:11px;color:var(--muted)}
             <div class="action-hint">✅ Ready when at least one source is on. Changes auto-update the command below.</div>
             <hr class="sep"/>
             <div class="label">Command preview</div>
-            <textarea id="cmd" class="input mono" rows="3" spellcheck="false" style="flex:1;min-height:70px">insight-mine collect --topic "" --since YYYY-MM-DD --subreddits "" --limit 40 --yt-videos 25</textarea>
+            <textarea id="cmd" class="input mono" rows="3" spellcheck="false" style="flex:1;min-height:70px">insight-mine collect --topic "" --since YYYY-MM-DD --subreddits "" --reddit-limit 40 --yt-videos 25</textarea>
           </div>
         </div>
 
@@ -762,10 +784,24 @@ th.sortable .sort-ind{font-size:11px;color:var(--muted)}
   <!-- Datalists for filter autocomplete -->
 
 <script>
+function safeStorageGet(key){
+  try { return window.localStorage ? localStorage.getItem(key) : null; }
+  catch(_) { return null; }
+}
+function safeStorageSet(key, value){
+  try { if (window.localStorage) localStorage.setItem(key, value); }
+  catch(_) {}
+}
+function safeMatchMedia(query){
+  try { return !!window.matchMedia && !!window.matchMedia(query).matches; }
+  catch(_) { return false; }
+}
+const COLLECT_HERO_PREF_KEY = "im_collect_hero_hidden";
+let collectHeroHidden = safeStorageGet(COLLECT_HERO_PREF_KEY) === "1";
 // ---- Theme Toggle ----
 (function initTheme(){
-  const saved = localStorage.getItem("im_theme");
-  const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const saved = safeStorageGet("im_theme");
+  const prefersDark = safeMatchMedia("(prefers-color-scheme: dark)");
   const theme = saved || (prefersDark ? "dark" : "light");
   document.documentElement.setAttribute("data-theme", theme);
   // Update icon after DOM ready
@@ -779,7 +815,7 @@ function toggleTheme(){
   const current = document.documentElement.getAttribute("data-theme") || "dark";
   const next = current === "dark" ? "light" : "dark";
   document.documentElement.setAttribute("data-theme", next);
-  localStorage.setItem("im_theme", next);
+  safeStorageSet("im_theme", next);
   updateThemeIcon(next);
 }
 
@@ -861,6 +897,17 @@ function gentlyPulse(el){
   el.classList.add("active-pulse");
   setTimeout(()=> el.classList.remove("active-pulse"), 260);
 }
+function syncCollectHeroVisibility(){
+  const hero = $("#collectHero");
+  const reveal = $("#collectHeroReveal");
+  if(hero) hero.classList.toggle("hidden", collectHeroHidden);
+  if(reveal) reveal.classList.toggle("hidden", !collectHeroHidden);
+}
+function setCollectHeroHidden(hidden){
+  collectHeroHidden = !!hidden;
+  safeStorageSet(COLLECT_HERO_PREF_KEY, collectHeroHidden ? "1" : "0");
+  syncCollectHeroVisibility();
+}
 function wireQuickSince(){
   const since = $("#since");
   $all(".quick-since").forEach(btn=>{
@@ -900,6 +947,8 @@ let platformSegComments = "all";
 let page = 1;
 let pageSize = 25;
 let currentView = "parents";
+let parentRenderToken = 0;
+let commentRenderToken = 0;
 
 const YT_ICON='<span class="yt-icon" aria-label="YouTube"><svg viewBox="0 0 24 18" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="24" height="18" rx="3" fill="#FF0000"></rect><polygon points="10,5 18,9 10,13" fill="#FFFFFF"></polygon></svg></span>';
 const RD_ICON='👽';
@@ -1134,6 +1183,11 @@ $("#openSettings").addEventListener("click", async (e)=>{
   $("#modalSettings").style.display="block";
   await loadEnvSettings();
 });
+$("#openSourceUpdate").addEventListener("click", (e)=>{
+  e.preventDefault();
+  $("#moreMenu").style.display="none";
+  showToast("Source updates run through the desktop bridge.");
+});
 $("#closeTelemetryBtn").addEventListener("click", ()=> { $("#modalTelemetry").style.display="none"; });
 $("#closeSettingsBtn").addEventListener("click", ()=> { $("#modalSettings").style.display="none"; });
 
@@ -1255,9 +1309,12 @@ window.addEventListener("load", ()=>{
   wrapWithCopy($("#cmd"), "Copy command");
   // Log copy button is now in HTML directly
   // v16: new storage key to avoid loading old cached runs with stale link text
-  try{ const data = localStorage.getItem("im_runs_v16"); if(data){ runs = JSON.parse(data); currentRun = runs[0]||null; } }catch(_){}
+  try{ const data = safeStorageGet("im_runs_v16"); if(data){ runs = JSON.parse(data); currentRun = runs[0]||null; } }catch(_){}
+  syncCollectHeroVisibility();
   updateSortIndicatorsParents(); updateSortIndicatorsComments();
 });
+$("#hideCollectHero").addEventListener("click", ()=> setCollectHeroHidden(true));
+$("#showCollectHero").addEventListener("click", ()=> setCollectHeroHidden(false));
 
 // Connector toggles
 function bindConnectorEvents(){
@@ -1360,7 +1417,7 @@ function simulateRun(){
     else {
       const run={ id:"run_"+Date.now(), manifest, stats, pasteReady: pasteLines.join("\n\n---\n\n") };
       currentRun=run; runs.unshift(run);
-      try{ localStorage.setItem("im_runs_v16", JSON.stringify(runs.slice(0,12))); }catch(_){}
+      safeStorageSet("im_runs_v16", JSON.stringify(runs.slice(0,12)));
       $("#runBtnLabel").textContent = runDesc(run);
       renderActiveView(); renderTelemetry();
       log("✓ Completed. Items: "+manifest.items.length);
@@ -1533,17 +1590,22 @@ function buildCli(knobs){
   const topic=(knobs.topic||"").replaceAll('"','\\"');
   const ytFlags= knobs.connectors.youtube ?
     ` --yt-videos ${knobs.advanced.yt.max_videos}` +
-    ` --yt-comments-per-video ${knobs.advanced.yt.comments_per_video}` +
-    ` --yt-min-views ${knobs.advanced.yt.min_views}` : "";
+    ` --yt-max-comments ${knobs.advanced.yt.comments_per_video}` +
+    ` --yt-min-views ${knobs.advanced.yt.min_views}` :
+    ` --yt-videos 0 --yt-max-comments 0`;
   const rd=knobs.advanced.rd;
-  const rdFlags = ` --limit ${rd.max_posts}` +
-    ` --rd-comments-per-post ${rd.comments_per_post}` +
-    ` --rd-min-score ${rd.min_score}` +
+  const rdFlags = knobs.connectors.reddit ?
+    ` --reddit-mode scrape` +
+    ` --reddit-limit ${rd.max_posts}` +
+    ` --reddit-comments ${rd.comments_per_post}` +
+    ` --reddit-min-score ${rd.min_score}` +
     ` --reddit-source ${rd.selector}` +
-    (rd.selector==='search' && rd.query ? ` --reddit-query ${JSON.stringify(rd.query)}`:"") +
+    (rd.selector==='search' && (rd.query || topic) ? ` --reddit-query ${JSON.stringify(rd.query || topic)}`:"") +
     (rd.selector==='search' ? ` --reddit-sort ${rd.search_sort} --reddit-t ${rd.search_time}`:"") +
-    (rd.selector==='top' ? ` --reddit-top-t ${rd.top_time}`:"");
-  const misc=` --lang ${knobs.advanced.language}` + (knobs.advanced.dedupe==='off'?` --no-dedupe`:"");
+    (rd.selector==='top' ? ` --reddit-top-t ${rd.top_time}`:"") +
+    ` --allow-scraping` :
+    ` --reddit-mode off --reddit-limit 0 --reddit-comments 0`;
+  const misc=` --langs ${JSON.stringify(knobs.advanced.language)}` + (knobs.advanced.dedupe!=='off'?` --dedupe`:"");
   const subs=knobs.subreddits.join(",");
   return `insight-mine collect --topic "${topic}" --since ${knobs.since} --subreddits "${subs}"${ytFlags}${rdFlags}${misc}`;
 }
@@ -1707,8 +1769,10 @@ function getFilteredSortedComments(noPaging=false){
 // Render parents view
 function renderParentsRows(items){
   const tb=$("#resultsBody"); tb.innerHTML="";
+  const renderToken = ++parentRenderToken;
   let i=0, n=items.length, batch=60;
   function step(){
+    if (renderToken !== parentRenderToken) return;
     const frag=document.createDocumentFragment();
     for(let j=0;j<batch && i<n;j++,i++){
       const it=items[i]; const icon= it.platform==="youtube"?YT_ICON:RD_ICON;
@@ -1731,7 +1795,7 @@ function renderParentsRows(items){
       frag.appendChild(main); frag.appendChild(det);
     }
     tb.appendChild(frag);
-    if(i<n) requestAnimationFrame(step);
+    if(i<n && renderToken === parentRenderToken) requestAnimationFrame(step);
   }
   requestAnimationFrame(step);
 }
@@ -2026,8 +2090,10 @@ function renderCommentsTable(){
   populateFilterSuggestions();
   updateSortIndicatorsComments();
   const tb=$("#commentsBody"); tb.innerHTML="";
+  const renderToken = ++commentRenderToken;
   const rows=getFilteredSortedComments(); let i=0, n=rows.length, batch=80;
   function step(){
+    if (renderToken !== commentRenderToken) return;
     const frag=document.createDocumentFragment();
     for(let j=0;j<batch && i<n;j++,i++){
       const r=rows[i]; const icon=r.platform==="youtube"?YT_ICON:RD_ICON;
@@ -2051,7 +2117,7 @@ function renderCommentsTable(){
       tr.querySelectorAll("[title]").forEach(el=>{ if(el.getAttribute("title")==="") el.removeAttribute("title"); });
     }
     tb.appendChild(frag);
-    if(i<n) requestAnimationFrame(step);
+    if(i<n && renderToken === commentRenderToken) requestAnimationFrame(step);
     else {
       const total=allCommentsOfRun().length, filteredTotal=getFilteredSortedComments(true).length;
       $("#commentsCount").textContent = `Filtered ${filteredTotal} / Total ${total} comments — Showing ${(rows.length?((page-1)*pageSize+1):0)}–${((page-1)*pageSize+rows.length)}`;
@@ -2285,6 +2351,7 @@ document.addEventListener('click', function(e) {
     fetchTranscript(videoId, btn);
   }
 });
+window.__imUiReady = true;
 </script>
 </body>
 </html>

@@ -1,6 +1,7 @@
 """SQLite-backed cache utilities for deduping seen items."""
 from __future__ import annotations
-import sqlite3, time
+import sqlite3
+import time
 from pathlib import Path
 from typing import Iterable, Tuple, Set
 from contextlib import contextmanager

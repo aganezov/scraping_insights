@@ -4,7 +4,6 @@ import argparse
 import importlib.resources as importlib_resources
 import pkgutil
 import sys
-import time
 import webview
 
 from insight_mine.guis.pywebview.bridge import Bridge
@@ -15,8 +14,9 @@ def _bundle_base() -> Path:
     Resolve the base path for bundled resources when frozen with PyInstaller.
     Falls back to the source layout when running from the repo.
     """
-    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
-        return Path(sys._MEIPASS)
+    meipass = getattr(sys, "_MEIPASS", None)
+    if getattr(sys, "frozen", False) and isinstance(meipass, str):
+        return Path(meipass)
     return Path(__file__).resolve().parent
 
 
@@ -70,6 +70,38 @@ def _read(p: Path) -> str:
         pass
     raise FileNotFoundError(f"bridge_inject.js not found at {p}")
 
+
+def _bridge_bootstrap_js(bridge_js: str) -> str:
+    return f"""
+(() => {{
+  const inject = () => {{
+    if (window.__imBridgeLoaded) return true;
+    const ready =
+      document.readyState === "complete" &&
+      window.__imUiReady === true;
+    if (!ready) return false;
+    try {{
+      {bridge_js}
+      window.__imBridgeLoaded = true;
+      return true;
+    }} catch (err) {{
+      console.error("[IM] bridge inject failed", err);
+      return false;
+    }}
+  }};
+  if (inject()) return true;
+  let tries = 0;
+  const timer = setInterval(() => {{
+    tries += 1;
+    if (inject() || tries > 200) {{
+      clearInterval(timer);
+    }}
+  }}, 50);
+  window.addEventListener("load", inject, {{ once: true }});
+  return false;
+}})();
+"""
+
 def main():
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("--env", default=None)
@@ -78,22 +110,23 @@ def main():
 
     assets_dir = _assets_dir()
     ui_path = assets_dir / "ui.html"
-    bridge_js = _read(_bridge_js_path())
+    ui_html = ui_path.read_text(encoding="utf-8")
+    bridge_js = _bridge_bootstrap_js(_read(_bridge_js_path()))
 
     # IMPORTANT: provide an instance so we can pass env_path
     js_api = Bridge(env_path=args.env)
 
-    # Cache-bust: append timestamp to force WebKit to reload
-    cache_bust = int(time.time())
     win = webview.create_window(
         title="Insight Mine",
-        url=f"{ui_path.as_uri()}?v={cache_bust}",
+        html=ui_html,
         width=1280,
         height=900,
         resizable=True,
         easy_drag=False,
         js_api=js_api,
     )
+    if win is None:
+        raise RuntimeError("Failed to create Insight Mine window")
 
     webview.start(lambda: win.evaluate_js(bridge_js), debug=False)
 

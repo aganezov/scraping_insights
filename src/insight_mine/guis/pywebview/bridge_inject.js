@@ -173,6 +173,28 @@ function resetCountersForRun(){
       loadEnvIntoModal();
     }
   });
+  cloneRebind('openSourceUpdate', async (e) => {
+    e.preventDefault();
+    moreMenu && (moreMenu.style.display = 'none');
+    const okay = window.confirm('Pull the latest code for this checkout and refresh GUI dependencies? This only works on a clean git checkout.');
+    if (!okay) return;
+    try {
+      const res = await api.update_source_checkout();
+      if (!res || !res.ok) {
+        alert('Update failed: ' + ((res && res.error) || 'unknown error'));
+        return;
+      }
+      const restartNow = window.confirm((res.message || 'Update completed.') + '\n\nRestart Insight Mine now?');
+      if (restartNow) {
+        const restart = await api.restart_app();
+        if (!restart || !restart.ok) {
+          alert('Restart failed: ' + ((restart && restart.error) || 'unknown error'));
+        }
+      }
+    } catch (err) {
+      alert('Update failed: ' + err);
+    }
+  });
   cloneRebind('closeSettingsBtn', ()=>{ modal && (modal.style.display='none'); });
 
   // Wire up new Settings modal buttons
@@ -258,7 +280,17 @@ function resetCountersForRun(){
       const runsData = await api.list_runs(); // [{id, started_at, topic, items}]
       
       // Process and store runs
-      window.IMBridge.receive('runs_list', { runs: runsData });
+      try {
+        window.IMBridge.receive('runs_list', { runs: runsData });
+      } catch (receiveErr) {
+        if ((runsData || []).length === 0) {
+          window.runs = [];
+          const runList = document.getElementById('runList');
+          if (runList) runList.innerHTML = '<div class="small">No runs</div>';
+        } else {
+          throw receiveErr;
+        }
+      }
       
       // Now manually trigger what the original handler would do
       // Switch to results tab
@@ -292,8 +324,18 @@ function resetCountersForRun(){
       }
       
       if (window.openRunMenu) window.openRunMenu(false);
-      if (window.renderActiveView) window.renderActiveView();
-      if (window.renderTelemetry) window.renderTelemetry();
+      if (window.currentRun) {
+        try {
+          if (window.renderActiveView) window.renderActiveView();
+        } catch (renderErr) {
+          console.error('[IM] renderActiveView failed on results open', renderErr);
+        }
+        try {
+          if (window.renderTelemetry) window.renderTelemetry();
+        } catch (telemetryErr) {
+          console.error('[IM] renderTelemetry failed on results open', telemetryErr);
+        }
+      }
       
     } catch (err) {
       window.log && window.log('! list_runs failed: ' + String(err));
@@ -321,8 +363,16 @@ function resetCountersForRun(){
     if (type === 'run_complete') {
       window.currentRun = payload.run;
       window.runs = window.runs || []; window.runs.unshift(payload.run);
-      window.renderActiveView && window.renderActiveView();
-      window.renderTelemetry  && window.renderTelemetry();
+      try {
+        window.renderActiveView && window.renderActiveView();
+      } catch (err) {
+        console.error('[IM] renderActiveView failed after run_complete', err);
+      }
+      try {
+        window.renderTelemetry && window.renderTelemetry();
+      } catch (err) {
+        console.error('[IM] renderTelemetry failed after run_complete', err);
+      }
       const lbl = document.getElementById('runBtnLabel');
       if (lbl && window.currentRun && window.runDesc) lbl.textContent = window.runDesc(window.currentRun);
       if (window.log) window.log('DONE');
@@ -633,33 +683,42 @@ function resetCountersForRun(){
   // Override renderTelemetry to use window.currentRun
   window.renderTelemetry = function() {
     const run = getCurrentRun();
-    const statsEl = document.getElementById('stats');
-    if (!statsEl) return;
-    
-    if (!run || !run.stats) {
-      statsEl.innerHTML = '<span class="small">(no telemetry)</span>';
+    const keptEl = document.getElementById('keptT');
+    const dropEl = document.getElementById('dropT');
+    if (!keptEl || !dropEl) return;
+
+    if (!run) {
+      keptEl.innerHTML = '';
+      dropEl.innerHTML = '';
       return;
     }
-    
-    const dropped = run.stats.dropped || {};
-    const lines = [];
-    for (const [key, val] of Object.entries(dropped)) {
-      if (val && typeof val === 'number' && val > 0) {
-        lines.push(`${key}: ${val}`);
-      }
-    }
-    
-    if (lines.length === 0) {
-      statsEl.innerHTML = '<span class="small">(no drops recorded)</span>';
-    } else {
-      statsEl.innerHTML = lines.map(l => `<div class="small">${l}</div>`).join('');
-    }
+
+    const items = run.manifest?.items || [];
+    const dropped = run.stats?.dropped || {};
+    const fmt = window.fmt || (v => (v == null ? '' : String(v)));
+
+    keptEl.innerHTML = [
+      `<tr><td>YouTube</td><td>${fmt(items.filter(i => i.platform === 'youtube').length)}</td></tr>`,
+      `<tr><td>Reddit</td><td>${fmt(items.filter(i => i.platform === 'reddit').length)}</td></tr>`,
+    ].join('');
+
+    dropEl.innerHTML = [
+      `<tr><td>low_views</td><td>${fmt(dropped.low_views || 0)}</td></tr>`,
+      `<tr><td>low_score</td><td>${fmt(dropped.low_score || 0)}</td></tr>`,
+      `<tr><td>lang_mismatch</td><td>${fmt(dropped.lang_mismatch || 0)}</td></tr>`,
+    ].join('');
+
+    if (window.updateInlineMetrics) window.updateInlineMetrics();
   };
   
   // Override renderResults to use window.currentRun
   window.renderResults = function() {
     const run = getCurrentRun();
-    if (window.populateFilterSuggestions) window.populateFilterSuggestions();
+    try {
+      if (window.populateFilterSuggestions) window.populateFilterSuggestions();
+    } catch (err) {
+      console.error('[IM] populateFilterSuggestions failed', err);
+    }
     if (window.updateInlineMetrics) window.updateInlineMetrics();
     if (window.updateSortIndicatorsParents) window.updateSortIndicatorsParents();
     
@@ -711,12 +770,14 @@ function resetCountersForRun(){
   };
   
   // Override renderCommentsTable to use window.currentRun and our pagination
+  let bridgeCommentRenderToken = 0;
   window.renderCommentsTable = function() {
     if (window.populateFilterSuggestions) window.populateFilterSuggestions();
     if (window.updateSortIndicatorsComments) window.updateSortIndicatorsComments();
     const tb = document.getElementById('commentsBody');
     if (!tb) return;
     tb.innerHTML = '';
+    const renderToken = ++bridgeCommentRenderToken;
     
     const rows = window.getFilteredSortedComments();
     let i = 0, n = rows.length, batch = 80;
@@ -727,6 +788,7 @@ function resetCountersForRun(){
     const escapeHtml = window.escapeHtml || (s => s);
     
     function step() {
+      if (renderToken !== bridgeCommentRenderToken) return;
       const frag = document.createDocumentFragment();
       for (let j = 0; j < batch && i < n; j++, i++) {
         const r = rows[i];
@@ -749,7 +811,7 @@ function resetCountersForRun(){
         frag.appendChild(tr);
       }
       tb.appendChild(frag);
-      if (i < n) {
+      if (i < n && renderToken === bridgeCommentRenderToken) {
         requestAnimationFrame(step);
       } else {
         const total = window.allCommentsOfRun().length;
@@ -876,6 +938,7 @@ function resetCountersForRun(){
       const btn = e.target.closest('button');
       if (btn && btn.dataset.val) {
         window._im_currentView = btn.dataset.val;
+        window.currentView = btn.dataset.val;
         window._im_page = 1;  // Reset page on view change
       }
     }, true);  // Capture phase to run before ui.html's handler
@@ -1060,47 +1123,16 @@ function resetCountersForRun(){
 
   // Wrap buildCli ONCE so preview always includes --out and respects connector toggles
   function wrapBuildCli(){
-    // override builder to always encode connector toggles + --out
-    window.buildCli = function(knobs){
-      knobs = knobs || (window.collectKnobs ? window.collectKnobs() : {});
-      const topic=(knobs.topic||"").replaceAll('"','\\"');
-      // YouTube
-      let ytFlags = "";
-      if (knobs.connectors?.youtube) {
-        ytFlags =
-          ` --yt-videos ${knobs.advanced.yt.max_videos}` +
-          ` --yt-comments-per-video ${knobs.advanced.yt.comments_per_video}` +
-          ` --yt-min-views ${knobs.advanced.yt.min_views}`;
-      } else {
-        ytFlags = ` --yt-videos 0 --yt-comments-per-video 0`;
-      }
-      // Reddit
-      const rd = knobs.advanced.rd;
-      let rdFlags = "";
-      if (knobs.connectors?.reddit) {
-        rdFlags =
-          ` --reddit-limit ${rd.max_posts}` +
-          ` --reddit-comments ${rd.comments_per_post}` +
-          ` --reddit-min-score ${rd.min_score}` +
-          ` --reddit-source ${rd.selector}` +
-          (rd.selector==='search' && rd.query ? ` --reddit-query ${JSON.stringify(rd.query)}`:"") +
-          (rd.selector==='search' ? ` --reddit-sort ${rd.search_sort} --reddit-t ${rd.search_time}`:"") +
-          (rd.selector==='top' ? ` --reddit-top-t ${rd.top_time}`:"");
-        if (!/--allow-scraping\b/.test(rdFlags) && rd.selector !== 'api') {
-          rdFlags += ` --allow-scraping`;
-        }
-      } else {
-        rdFlags = ` --reddit-limit 0 --reddit-comments 0`;
-      }
-      const misc =
-        ` --lang ${knobs.advanced.language}` +
-        (knobs.advanced.dedupe==='off'?` --no-dedupe`:"");
-      const subs = (knobs.subreddits||[]).join(",");
-      let s = `insight-mine collect --topic "${topic}" --since ${knobs.since} --subreddits "${subs}"${ytFlags}${rdFlags}${misc}`;
+    if (!window.buildCli || window.buildCli.__im_wrapped) return;
+    const baseBuildCli = window.buildCli;
+    const wrappedBuildCli = function(knobs){
+      let s = baseBuildCli(knobs);
       const p = (window.IM_OUT_DIR || "").trim();
-      if (p) s += " --out " + JSON.stringify(p);
-      return s;
+      if (p && !/\s--out\b/.test(s)) s += " --out " + JSON.stringify(p);
+      return s.trim();
     };
+    wrappedBuildCli.__im_wrapped = true;
+    window.buildCli = wrappedBuildCli;
   }
 
   // Rebind Run so we execute EXACTLY the preview string
@@ -1551,12 +1583,13 @@ function resetCountersForRun(){
         return;
       }
       
-      const view = window.currentView || 'parents';
+      const view = window._im_currentView || window.currentView || 'parents';
       const mode = document.getElementById('exportMode')?.value || 'parents+comments';
       
       try {
         if (view === 'parents') {
-          const parents = window.getParentsSubset ? window.getParentsSubset() : 
+          const parents = window.getFilteredSortedItems ?
+                         window.getFilteredSortedItems(true) :
                          (window.currentRun.manifest?.items || []);
           
           if (mode === 'parents-only') {
@@ -1606,11 +1639,12 @@ function resetCountersForRun(){
         return;
       }
       
-      const view = window.currentView || 'parents';
+      const view = window._im_currentView || window.currentView || 'parents';
       
       try {
         if (view === 'parents') {
-          const parents = window.getParentsSubset ? window.getParentsSubset() : 
+          const parents = window.getFilteredSortedItems ?
+                         window.getFilteredSortedItems(true) :
                          (window.currentRun.manifest?.items || []);
           
           // Transform to flat CSV rows
@@ -1698,5 +1732,514 @@ function resetCountersForRun(){
     document.addEventListener('DOMContentLoaded', init, { once: true });
   } else {
     setTimeout(init, 100);
+  }
+})();
+
+// ========== UI RESILIENCE WIRING ==========
+;(function(){
+  if (!(window.pywebview && window.pywebview.api)) return;
+
+  const debounce = window.debounce || ((fn, ms) => {
+    let t = null;
+    return (...args) => {
+      clearTimeout(t);
+      t = setTimeout(() => fn(...args), ms);
+    };
+  });
+
+  function cloneRebind(id, handler, eventName = 'click') {
+    const el = document.getElementById(id);
+    if (!el) return null;
+    const clone = el.cloneNode(true);
+    el.parentNode.replaceChild(clone, el);
+    clone.addEventListener(eventName, handler);
+    return clone;
+  }
+
+  function bindOnce(el, key, eventName, handler, options) {
+    if (!el || el.dataset[key]) return;
+    el.dataset[key] = '1';
+    el.addEventListener(eventName, handler, options);
+  }
+
+  function switchTab(tabName) {
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.classList.toggle('active', tab.dataset.tab === tabName);
+    });
+    document.querySelectorAll('[data-page]').forEach(page => {
+      page.style.display = page.getAttribute('data-page') === tabName ? 'block' : 'none';
+    });
+  }
+
+  function setStatusChip(id, label, enabled) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.className = 'status-chip ' + (enabled ? 'status-ok' : 'status-off');
+    el.textContent = `${label}: ${enabled ? 'enabled' : 'disabled'}`;
+  }
+
+  function syncCollectState() {
+    const ytOn = !!document.getElementById('enableYoutube')?.checked;
+    const rdOn = !!document.getElementById('enableReddit')?.checked;
+    const transcriptMode = document.getElementById('transcriptMode')?.value || 'off';
+    const transcriptOn = transcriptMode !== 'off';
+
+    setStatusChip('ytStatus', 'YouTube', ytOn);
+    setStatusChip('rdStatus', 'Reddit', rdOn);
+
+    const trStatus = document.getElementById('trStatus');
+    if (trStatus) {
+      trStatus.className = 'status-chip ' + (transcriptOn ? 'status-ok' : '');
+      trStatus.textContent = `Transcripts: ${transcriptMode}`;
+    }
+
+    const ytProgWrap = document.getElementById('ytProgWrap');
+    const rdProgWrap = document.getElementById('rdProgWrap');
+    if (ytProgWrap) ytProgWrap.style.display = ytOn ? 'block' : 'none';
+    if (rdProgWrap) rdProgWrap.style.display = rdOn ? 'block' : 'none';
+
+    const chips = document.querySelectorAll('.item-chips .item-chip');
+    if (chips[0]) chips[0].style.display = ytOn ? 'inline-flex' : 'none';
+    if (chips[1]) chips[1].style.display = rdOn ? 'inline-flex' : 'none';
+
+    const runBtn = document.getElementById('runBtn');
+    const runHint = document.getElementById('runHint');
+    const canRun = ytOn || rdOn;
+    if (runBtn) runBtn.disabled = !canRun;
+    if (runHint) runHint.style.display = canRun ? 'none' : 'inline';
+  }
+
+  function pulse(el) {
+    if (!el || !el.classList) return;
+    el.classList.add('active-pulse');
+    setTimeout(() => el.classList.remove('active-pulse'), 260);
+  }
+
+  function applyQuickSince(days, btn) {
+    const since = document.getElementById('since');
+    if (!since || Number.isNaN(days)) return;
+    const d = new Date();
+    d.setDate(d.getDate() - days);
+    since.value = d.toISOString().slice(0, 10);
+    pulse(since);
+    pulse(btn);
+    if (window.updateCmd) window.updateCmd();
+  }
+
+  function wireCollectInteractions() {
+    document.querySelectorAll('.quick-since').forEach(btn => {
+      bindOnce(btn, '_im_quick_since', 'click', () => {
+        applyQuickSince(parseInt(btn.dataset.days || '0', 10), btn);
+      });
+    });
+
+    document.querySelectorAll('.topic-idea').forEach(btn => {
+      bindOnce(btn, '_im_topic_idea', 'click', () => {
+        const topic = document.getElementById('topic');
+        if (!topic) return;
+        topic.value = btn.dataset.topic || '';
+        topic.focus();
+        pulse(topic);
+        pulse(btn);
+        if (window.updateCmd) window.updateCmd();
+      });
+    });
+
+    ['enableYoutube', 'enableReddit', 'transcriptMode'].forEach(id => {
+      const eventName = id === 'transcriptMode' ? 'change' : 'change';
+      const el = document.getElementById(id);
+      bindOnce(el, `_im_collect_${id}`, eventName, () => {
+        syncCollectState();
+        if (window.updateCmd) window.updateCmd();
+      });
+    });
+
+    cloneRebind('openSubredditPicker', () => {
+      if (window.openSubredditModal) window.openSubredditModal();
+    });
+    cloneRebind('closeSubredditsBtn', () => {
+      if (window.closeSubredditModal) window.closeSubredditModal();
+    });
+    cloneRebind('addSubredditBtn', () => {
+      if (window.addSubreddit) window.addSubreddit();
+    });
+
+    const subredditInput = document.getElementById('subredditInput');
+    bindOnce(subredditInput, '_im_subreddit_enter', 'keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (window.addSubreddit) window.addSubreddit();
+      }
+    });
+
+    cloneRebind('explain', () => {
+      const knobs = window.collectKnobs ? window.collectKnobs() : {};
+      const buildCli = window.buildCli || (() => '');
+      const pre = document.getElementById('explainPre');
+      const modal = document.getElementById('modalExplain');
+      if (pre) pre.textContent = JSON.stringify({ knobs, cli: buildCli(knobs) }, null, 2);
+      if (window.ensureSized && pre) window.ensureSized(pre);
+      if (modal) modal.style.display = 'block';
+    });
+
+    syncCollectState();
+  }
+
+  function ensureCollectTabWorks() {
+    const tabs = document.getElementById('tabs');
+    bindOnce(tabs, '_im_collect_tab', 'click', (e) => {
+      const tab = e.target.closest('.tab');
+      if (!tab || tab.dataset.tab !== 'collect') return;
+      e.stopImmediatePropagation();
+      switchTab('collect');
+      const menu = document.getElementById('runMenu');
+      if (menu) menu.style.display = 'none';
+    }, true);
+  }
+
+  function readParentFilters() {
+    return {
+      title: document.getElementById('f_title')?.value || '',
+      author: document.getElementById('f_author')?.value || '',
+      ctx: document.getElementById('f_ctx')?.value || '',
+      score: document.getElementById('f_score')?.value || '',
+      replies: document.getElementById('f_replies')?.value || '',
+      views: document.getElementById('f_views')?.value || '',
+      date: document.getElementById('f_date')?.value || '',
+    };
+  }
+
+  function readCommentFilters() {
+    return {
+      text: document.getElementById('cf_text')?.value || '',
+      author: document.getElementById('cf_author')?.value || '',
+      parent: document.getElementById('cf_parent')?.value || '',
+      ctx: document.getElementById('cf_ctx')?.value || '',
+      likes: document.getElementById('cf_likes')?.value || '',
+      date: document.getElementById('cf_date')?.value || '',
+    };
+  }
+
+  function parseNumFilterSafe(input, value) {
+    if (window.parseNumFilter) return window.parseNumFilter(input, value);
+    const s = (input || '').trim();
+    if (!s) return true;
+    if (s.startsWith('>=')) return value >= (+s.slice(2));
+    if (s.startsWith('<=')) return value <= (+s.slice(2));
+    if (s.startsWith('>')) return value > (+s.slice(1));
+    if (s.startsWith('<')) return value < (+s.slice(1));
+    return String(value).includes(s);
+  }
+
+  function parentSortState() {
+    if (!window._im_sortKey) window._im_sortKey = 'created_at';
+    if (!window._im_sortDir) window._im_sortDir = 'desc';
+    return { key: window._im_sortKey, dir: window._im_sortDir };
+  }
+
+  function commentSortState() {
+    if (!window._im_cSortKey) window._im_cSortKey = 'c_date';
+    if (!window._im_cSortDir) window._im_cSortDir = 'desc';
+    return { key: window._im_cSortKey, dir: window._im_cSortDir };
+  }
+
+  function currentParentPlatform() {
+    return window._im_parentPlatform ||
+      document.querySelector('#platformSegParents button.active')?.dataset.val ||
+      'all';
+  }
+
+  function currentCommentPlatform() {
+    return window._im_commentPlatform ||
+      document.querySelector('#platformSegComments button.active')?.dataset.val ||
+      'all';
+  }
+
+  function parentKey(it, key) {
+    switch (key) {
+      case 'platform': return it.platform;
+      case 'title': return it.title || '';
+      case 'author': return it.author || '';
+      case 'context': return it.platform === 'youtube' ? (it.context?.channel || '') : (it.context?.subreddit || '');
+      case 'metrics_score': return it.platform === 'youtube' ? (it.metrics?.likes || 0) : (it.metrics?.score || 0);
+      case 'metrics_replies': return it.metrics?.replies || 0;
+      case 'metrics_views': return it.metrics?.views || 0;
+      case 'created_at': return new Date(it.created_at || 0).getTime();
+      default: return '';
+    }
+  }
+
+  function filterParents(items) {
+    const filters = readParentFilters();
+    const platform = currentParentPlatform();
+    let rows = (items || []).slice();
+
+    if (platform !== 'all') rows = rows.filter(item => item.platform === platform);
+    if (filters.title) rows = rows.filter(item => (item.title || '').toLowerCase().includes(filters.title.toLowerCase()));
+    if (filters.author) rows = rows.filter(item => (item.author || '').toLowerCase().includes(filters.author.toLowerCase()));
+    if (filters.ctx) rows = rows.filter(item => {
+      const ctx = item.platform === 'youtube' ? (item.context?.channel || '') : (item.context?.subreddit || '');
+      return ctx.toLowerCase().includes(filters.ctx.toLowerCase());
+    });
+    if (filters.score) rows = rows.filter(item => parseNumFilterSafe(filters.score, item.platform === 'youtube' ? (item.metrics?.likes || 0) : (item.metrics?.score || 0)));
+    if (filters.replies) rows = rows.filter(item => parseNumFilterSafe(filters.replies, item.metrics?.replies || 0));
+    if (filters.views) rows = rows.filter(item => parseNumFilterSafe(filters.views, item.metrics?.views || 0));
+    if (filters.date) rows = rows.filter(item => (item.created_at || '').slice(0, 7).includes(filters.date));
+
+    const sort = parentSortState();
+    if (sort.dir !== 'none' && sort.key) {
+      rows.sort((a, b) => {
+        const va = parentKey(a, sort.key);
+        const vb = parentKey(b, sort.key);
+        if (va == null && vb == null) return 0;
+        if (va == null) return 1;
+        if (vb == null) return -1;
+        if (typeof va === 'number' && typeof vb === 'number') return sort.dir === 'asc' ? va - vb : vb - va;
+        return sort.dir === 'asc' ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
+      });
+    }
+
+    return rows;
+  }
+
+  function filterComments(rows) {
+    const filters = readCommentFilters();
+    const platform = currentCommentPlatform();
+    let items = (rows || []).slice();
+
+    if (platform !== 'all') items = items.filter(row => row.platform === platform);
+    if (filters.text) items = items.filter(row => (row.text || '').toLowerCase().includes(filters.text.toLowerCase()));
+    if (filters.author) items = items.filter(row => (row.author || '').toLowerCase().includes(filters.author.toLowerCase()));
+    if (filters.parent) items = items.filter(row => (row.parentTitle || '').toLowerCase().includes(filters.parent.toLowerCase()));
+    if (filters.ctx) items = items.filter(row => (row.ctx || '').toLowerCase().includes(filters.ctx.toLowerCase()));
+    if (filters.likes) items = items.filter(row => parseNumFilterSafe(filters.likes, row.likes || 0));
+    if (filters.date) items = items.filter(row => (row.date || '').slice(0, 7).includes(filters.date));
+
+    const sort = commentSortState();
+    if (sort.dir !== 'none' && sort.key) {
+      items.sort((a, b) => {
+        const get = (row) => {
+          switch (sort.key) {
+            case 'c_platform': return row.platform;
+            case 'c_text': return row.text || '';
+            case 'c_author': return row.author || '';
+            case 'c_parent': return row.parentTitle || '';
+            case 'c_ctx': return row.ctx || '';
+            case 'c_likes': return row.likes || 0;
+            case 'c_date': return new Date(row.date || 0).getTime();
+            default: return '';
+          }
+        };
+        const va = get(a);
+        const vb = get(b);
+        if (typeof va === 'number' && typeof vb === 'number') return sort.dir === 'asc' ? va - vb : vb - va;
+        return sort.dir === 'asc' ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
+      });
+    }
+
+    return items;
+  }
+
+  window.updateSortIndicatorsParents = function() {
+    const sort = parentSortState();
+    document.querySelectorAll('#resultsTable th.sortable').forEach(th => {
+      const ind = th.querySelector('.sort-ind');
+      if (!ind) return;
+      ind.textContent = '';
+      if (th.dataset.key === sort.key) {
+        ind.textContent = sort.dir === 'asc' ? '▲' : (sort.dir === 'desc' ? '▼' : '•');
+      }
+    });
+  };
+
+  window.updateSortIndicatorsComments = function() {
+    const sort = commentSortState();
+    document.querySelectorAll('#commentsTable th.sortable').forEach(th => {
+      const ind = th.querySelector('.sort-ind');
+      if (!ind) return;
+      ind.textContent = '';
+      if (th.dataset.key === sort.key) {
+        ind.textContent = sort.dir === 'asc' ? '▲' : (sort.dir === 'desc' ? '▼' : '•');
+      }
+    });
+  };
+
+  window.getFilteredSortedItems = function(noPaging = false) {
+    const run = window.currentRun;
+    if (!run) return [];
+    const items = filterParents(run.manifest?.items || []);
+    if (noPaging) return items;
+
+    const pageSize = window._im_pageSize || 25;
+    let page = window._im_page || 1;
+    const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+    page = Math.max(1, Math.min(page, totalPages));
+    window._im_page = page;
+
+    const pageInfo = document.getElementById('pageInfo');
+    if (pageInfo) pageInfo.textContent = `Page ${page} / ${totalPages}`;
+
+    const start = (page - 1) * pageSize;
+    return items.slice(start, start + pageSize);
+  };
+
+  window.getParentsSubset = function() {
+    return window.getFilteredSortedItems(true);
+  };
+
+  window.getFilteredSortedComments = function(noPaging = false) {
+    const comments = filterComments(window.allCommentsOfRun ? window.allCommentsOfRun() : []);
+    if (noPaging) return comments;
+
+    const pageSize = window._im_pageSize || 25;
+    let page = window._im_page || 1;
+    const totalPages = Math.max(1, Math.ceil(comments.length / pageSize));
+    page = Math.max(1, Math.min(page, totalPages));
+    window._im_page = page;
+
+    const pageInfo = document.getElementById('pageInfo');
+    if (pageInfo) pageInfo.textContent = `Page ${page} / ${totalPages}`;
+
+    const start = (page - 1) * pageSize;
+    return comments.slice(start, start + pageSize);
+  };
+
+  window.updateInlineMetrics = function() {
+    const wrap = document.getElementById('inlineMetrics');
+    if (!wrap) return;
+    wrap.innerHTML = '';
+
+    const run = window.currentRun;
+    if (!run) return;
+
+    const items = window.getFilteredSortedItems ? window.getFilteredSortedItems(true) : (run.manifest?.items || []);
+    const yt = items.filter(item => item.platform === 'youtube');
+    const rd = items.filter(item => item.platform === 'reddit');
+    const comments = items.reduce((count, item) => count + (item.comments?.length || 0), 0);
+    const drops = run.stats?.dropped || {};
+    const fmt = window.fmt || (value => value);
+    const mk = (label, value) => `<span class="metric"><b>${fmt(value)}</b> ${label}</span>`;
+    wrap.innerHTML = [
+      mk('items', items.length),
+      mk('YouTube', yt.length),
+      mk('Reddit', rd.length),
+      mk('comments', comments),
+      mk('dropped', (drops.low_views || 0) + (drops.low_score || 0) + (drops.lang_mismatch || 0)),
+    ].join(' ');
+  };
+
+  function rebindResultsControls() {
+    const parentSortHeaders = document.querySelectorAll('#resultsTable th.sortable');
+    parentSortHeaders.forEach(th => {
+      bindOnce(th, '_im_parent_sort', 'click', (e) => {
+        e.stopImmediatePropagation();
+        const key = th.dataset.key;
+        if (!key) return;
+        if (window._im_sortKey === key) {
+          window._im_sortDir = window._im_sortDir === 'asc' ? 'desc' : (window._im_sortDir === 'desc' ? 'none' : 'asc');
+        } else {
+          window._im_sortKey = key;
+          window._im_sortDir = 'asc';
+        }
+        window._im_page = 1;
+        if (window.renderResults) window.renderResults();
+      }, true);
+    });
+
+    const commentSortHeaders = document.querySelectorAll('#commentsTable th.sortable');
+    commentSortHeaders.forEach(th => {
+      bindOnce(th, '_im_comment_sort', 'click', (e) => {
+        e.stopImmediatePropagation();
+        const key = th.dataset.key;
+        if (!key) return;
+        if (window._im_cSortKey === key) {
+          window._im_cSortDir = window._im_cSortDir === 'asc' ? 'desc' : (window._im_cSortDir === 'desc' ? 'none' : 'asc');
+        } else {
+          window._im_cSortKey = key;
+          window._im_cSortDir = 'asc';
+        }
+        window._im_page = 1;
+        if (window.renderCommentsTable) window.renderCommentsTable();
+      }, true);
+    });
+
+    ['f_title','f_author','f_ctx','f_score','f_replies','f_views','f_date'].forEach(id => {
+      const el = document.getElementById(id);
+      bindOnce(el, `_im_filter_${id}`, 'input', debounce(() => {
+        window._im_page = 1;
+        if (window.renderResults) window.renderResults();
+      }, 120));
+    });
+
+    ['cf_text','cf_author','cf_parent','cf_ctx','cf_likes','cf_date'].forEach(id => {
+      const el = document.getElementById(id);
+      bindOnce(el, `_im_filter_${id}`, 'input', debounce(() => {
+        window._im_page = 1;
+        if (window.renderCommentsTable) window.renderCommentsTable();
+      }, 120));
+    });
+
+    const parentSeg = document.getElementById('platformSegParents');
+    bindOnce(parentSeg, '_im_parent_seg', 'click', (e) => {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      parentSeg.querySelectorAll('button').forEach(node => node.classList.remove('active'));
+      btn.classList.add('active');
+      window._im_parentPlatform = btn.dataset.val || 'all';
+      window._im_page = 1;
+      if (window.renderResults) window.renderResults();
+    }, true);
+
+    const commentSeg = document.getElementById('platformSegComments');
+    bindOnce(commentSeg, '_im_comment_seg', 'click', (e) => {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      commentSeg.querySelectorAll('button').forEach(node => node.classList.remove('active'));
+      btn.classList.add('active');
+      window._im_commentPlatform = btn.dataset.val || 'all';
+      window._im_page = 1;
+      if (window.renderCommentsTable) window.renderCommentsTable();
+    }, true);
+
+    window.openRunMenu = function(show = true) {
+      const menu = document.getElementById('runMenu');
+      if (!menu) return;
+      menu.style.display = show ? 'block' : 'none';
+      if (show) {
+        const search = document.getElementById('runSearch');
+        if (search) search.focus();
+        if (window.populateRunMenu) window.populateRunMenu();
+      }
+    };
+
+    cloneRebind('runBtnOpen', () => {
+      const menu = document.getElementById('runMenu');
+      const isOpen = menu && menu.style.display === 'block';
+      if (window.openRunMenu) window.openRunMenu(!isOpen);
+    });
+
+    const runSearch = document.getElementById('runSearch');
+    bindOnce(runSearch, '_im_run_search', 'input', () => {
+      if (window.populateRunMenu) window.populateRunMenu();
+    });
+  }
+
+  function init() {
+    if (window._im_currentView === undefined) window._im_currentView = 'parents';
+    if (window.currentView === undefined) window.currentView = window._im_currentView;
+    if (window._im_parentPlatform === undefined) window._im_parentPlatform = 'all';
+    if (window._im_commentPlatform === undefined) window._im_commentPlatform = 'all';
+
+    ensureCollectTabWorks();
+    wireCollectInteractions();
+    rebindResultsControls();
+    if (window.updateSortIndicatorsParents) window.updateSortIndicatorsParents();
+    if (window.updateSortIndicatorsComments) window.updateSortIndicatorsComments();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init, { once: true });
+  } else {
+    setTimeout(init, 0);
   }
 })();

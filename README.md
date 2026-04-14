@@ -4,13 +4,49 @@ A small personal-use CLI that gathers Reddit and YouTube content for a topic and
 - `out/<timestamp>/raw.jsonl` – normalized items (one JSON per line)
 - `out/<timestamp>/paste-ready.txt` – short snippets + URLs for easy ChatGPT paste
 
+## Fresh macOS install
+
+First-time requirements on a new Mac:
+- Xcode Command Line Tools: `xcode-select --install`
+- `git` (usually installed with the command line tools)
+- `uv` (simplest route: `brew install uv`)
+
+Then:
+
+```bash
+git clone <your-github-url>
+cd scraping_insights_cursor
+make setup-gui
+cp .env.example .env
+# fill the keys you need in .env
+make run-gui ENV_FILE=.env
+```
+
+Notes:
+- You do not need to install Python manually; `uv` will install Python 3.11 for the project.
+- The simplest day-to-day source-checkout flow is `make run-gui ENV_FILE=.env`.
+- If you only want CLI usage, `uv sync` is enough; the GUI needs `uv sync --extra gui`.
+
+## Updating a source checkout
+
+Once the app is already installed from a git checkout:
+- In the app: `More -> Update source checkout`
+- In terminal: `make update-source-gui`
+
+The in-app updater only runs on a clean git checkout. It does:
+- `git pull --ff-only`
+- `uv sync --extra gui`
+- optional app restart
+
 ## Quickstart
 
 ```bash
-python -m venv .venv && source .venv/bin/activate
-pip install -U pip
-pip install -e .
-# or: pip install -e ".[test]" if you add extras
+uv python install 3.11
+uv venv --python 3.11
+source .venv/bin/activate
+uv sync
+# GUI work: uv sync --extra gui
+# Packaging: uv sync --extra gui --extra packaging
 
 # set env (or copy .env.example and export)
 export YOUTUBE_API_KEY=...
@@ -22,7 +58,7 @@ export REDDIT_USER_AGENT="insight-mine/0.1 (by u/yourname)"
 Run:
 
 ```bash
-insight-mine collect --topic "your topic" --since 2025-10-01 --subreddits "r/AskReddit,r/SomeSub" --limit 30 --yt-videos 20
+insight-mine collect --topic "your topic" --since 2025-10-01 --subreddits "r/AskReddit,r/SomeSub" --reddit-limit 30 --yt-videos 20
 ```
 
 If some API keys are missing, the CLI will list disabled connectors and proceed with the ones enabled.
@@ -41,11 +77,26 @@ The app checks env first, then Keychain.
 
 Python 3.11+
 
-pytest to run tests:
+Run tests with `uv`:
 
 ```bash
-pytest
+uv run pytest
 ```
+
+GUI smoke and free-only E2E:
+
+```bash
+cp .env.example .env
+# fill YOUTUBE_API_KEY in .env for the real path
+
+make gui-smoke
+make gui-e2e-free ENV_FILE=.env
+make run-gui ENV_FILE=.env
+```
+
+`make gui-smoke` is deterministic and local: it drives the live pywebview GUI against a fake collector and writes `tmp/gui-smoke-report.json`.
+
+`make gui-e2e-free` drives the real GUI and real CLI with YouTube enabled, Reddit disabled, and paid transcript fallback forced off. It writes `tmp/gui-e2e-free-report.json` and uses `tmp/gui-e2e-free-out` for run artifacts.
 
 ## Notes
 
@@ -57,7 +108,7 @@ X/Twitter: placeholder only; add once you have API access.
 
 ## macOS app packaging
 
-Prereqs on macOS (matching target arch): `python -m pip install -U pip` then `pip install -e ".[gui,packaging]"`.
+Prereqs on macOS (matching target arch): `uv sync --extra gui --extra packaging`.
 
 Workflow:
 - Bump version: `echo 0.1.0 > packaging/VERSION`

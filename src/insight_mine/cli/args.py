@@ -4,7 +4,7 @@ from __future__ import annotations
 import argparse
 import os
 from datetime import date, timedelta
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 PRESETS: Dict[str, Dict[str, Any]] = {
     "strict": {
@@ -39,6 +39,10 @@ PRESETS: Dict[str, Dict[str, Any]] = {
     },
 }
 
+REDDIT_SOURCE_CHOICES = ["search", "hot", "new", "top"]
+REDDIT_SEARCH_SORT_CHOICES = ["relevance", "hot", "new", "top", "comments"]
+REDDIT_TIME_CHOICES = ["all", "hour", "day", "week", "month", "year"]
+
 
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="insight-mine", description="Collect social content and write paste-ready files.")
@@ -55,8 +59,16 @@ def build_parser() -> argparse.ArgumentParser:
     c.add_argument("--preset", choices=["strict", "balanced", "wide"], default=None,
                    help="Apply a quality preset; explicit flags override preset values.")
 
-    c.add_argument("--langs", default=os.environ.get("LANGS", ""), help="Comma-separated language codes (e.g., en,es). Empty = no filter.")
-    c.add_argument("--dedupe", action="store_true", help="Enable text-based deduplication.")
+    c.add_argument(
+        "--langs", "--lang",
+        dest="langs",
+        default=os.environ.get("LANGS", ""),
+        help="Comma-separated language codes (e.g., en,es). Empty = no filter.",
+    )
+    dedupe_group = c.add_mutually_exclusive_group()
+    dedupe_group.add_argument("--dedupe", dest="dedupe", action="store_true", help="Enable text-based deduplication.")
+    dedupe_group.add_argument("--no-dedupe", dest="dedupe", action="store_false", help="Disable text-based deduplication.")
+    c.set_defaults(dedupe=False)
 
     c.add_argument("--yt-videos", type=int, default=None)
     c.add_argument("--yt-order", choices=["viewCount", "date", "relevance"], default=None)
@@ -73,7 +85,7 @@ def build_parser() -> argparse.ArgumentParser:
     c.add_argument("--allow-scraping", action="store_true")
     c.add_argument("--rd-fetch-budget", dest="rd_fetch_budget", type=int,
                    help="Soft cap on raw Reddit candidates when using fetch-until-keep (default: reddit_limit * 12).")
-    c.add_argument("--reddit-limit", dest="reddit_limit", type=int, default=40,
+    c.add_argument("--reddit-limit", dest="reddit_limit", type=int, default=None,
                    help="Target number of KEPT reddit posts (after filtering).")
     c.add_argument("--limit", dest="reddit_limit_legacy", type=int,
                    help="Alias for --reddit-limit.")
@@ -81,6 +93,16 @@ def build_parser() -> argparse.ArgumentParser:
     c.add_argument("--reddit-min-score", type=int, default=None)
     c.add_argument("--reddit-min-comment-score", type=int, default=None)
     c.add_argument("--reddit-max-comment-share", type=float, default=None)
+    c.add_argument("--reddit-source", choices=REDDIT_SOURCE_CHOICES, default=None,
+                   help="Scrape source: search uses topic/query; hot/new/top use listing endpoints.")
+    c.add_argument("--reddit-query", default=None,
+                   help="Explicit Reddit query when using --reddit-source search. Defaults to --topic.")
+    c.add_argument("--reddit-sort", choices=REDDIT_SEARCH_SORT_CHOICES, default=None,
+                   help="Sort for --reddit-source search.")
+    c.add_argument("--reddit-t", dest="reddit_t", choices=REDDIT_TIME_CHOICES, default=None,
+                   help="Time window for --reddit-source search.")
+    c.add_argument("--reddit-top-t", dest="reddit_top_t", choices=REDDIT_TIME_CHOICES, default=None,
+                   help="Time window for --reddit-source top.")
 
     c.add_argument("--yt-transcripts", choices=["off", "ytti"], default="off")
     c.add_argument("--yt-transcripts-limit", type=int, default=0)
@@ -121,6 +143,11 @@ def resolve_settings(args: argparse.Namespace) -> Dict[str, Any]:
     reddit_min_score = _resolve_setting("reddit_min_score", args.reddit_min_score, 0, preset)
     reddit_min_comment_score = _resolve_setting("reddit_min_comment_score", args.reddit_min_comment_score, 0, preset)
     reddit_max_comment_share = _resolve_setting("reddit_max_comment_share", args.reddit_max_comment_share, None, preset)
+    reddit_source = _resolve_setting("reddit_source", getattr(args, "reddit_source", None), "search", preset)
+    reddit_query = (getattr(args, "reddit_query", None) or "").strip()
+    reddit_sort = _resolve_setting("reddit_sort", getattr(args, "reddit_sort", None), "new", preset)
+    reddit_t = _resolve_setting("reddit_t", getattr(args, "reddit_t", None), "all", preset)
+    reddit_top_t = _resolve_setting("reddit_top_t", getattr(args, "reddit_top_t", None), "week", preset)
 
     yt_allow = [s.strip() for s in (args.yt_channel_allow.split(",") if args.yt_channel_allow else []) if s.strip()]
     yt_block = [s.strip() for s in (args.yt_channel_block.split(",") if args.yt_channel_block else []) if s.strip()]
@@ -141,6 +168,11 @@ def resolve_settings(args: argparse.Namespace) -> Dict[str, Any]:
         "reddit_min_score": reddit_min_score,
         "reddit_min_comment_score": reddit_min_comment_score,
         "reddit_max_comment_share": reddit_max_comment_share,
+        "reddit_source": reddit_source,
+        "reddit_query": reddit_query,
+        "reddit_sort": reddit_sort,
+        "reddit_t": reddit_t,
+        "reddit_top_t": reddit_top_t,
         "yt_allow": yt_allow,
         "yt_block": yt_block,
         "subs": subs,
