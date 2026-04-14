@@ -249,6 +249,7 @@ def test_restart_app_relaunches_current_entrypoint(monkeypatch, tmp_path):
         def destroy(self):
             launched["destroyed"] = True
 
+    monkeypatch.setattr(bridge, "_schedule_process_exit", lambda delay_s=0.75: launched.setdefault("exit_scheduled", delay_s))
     monkeypatch.setattr(bridge.subprocess, "Popen", fake_popen)
     monkeypatch.setattr(bridge, "_main_window", lambda: _Window())
 
@@ -262,3 +263,4 @@ def test_restart_app_relaunches_current_entrypoint(monkeypatch, tmp_path):
     assert launched["cwd"] == str(repo_root)
     assert launched["start_new_session"] is True
     assert launched["destroyed"] is True
+    assert launched["exit_scheduled"] == 0.75

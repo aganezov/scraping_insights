@@ -137,6 +137,18 @@ def _gui_relaunch_cmd() -> list[str]:
     return [argv0, *argv]
 
 
+def _schedule_process_exit(delay_s: float = 0.75) -> threading.Timer:
+    """
+    Terminate the current GUI process shortly after a restart handoff.
+    Cocoa can keep the app loop alive after the window is destroyed, so a
+    delayed hard exit ensures the stale process does not linger in the Dock.
+    """
+    timer = threading.Timer(delay_s, lambda: os._exit(0))
+    timer.daemon = True
+    timer.start()
+    return timer
+
+
 class Bridge:
     """
     JS-exposed API. Methods are called from bridge_inject.js via window.pywebview.api.
@@ -642,7 +654,11 @@ class Bridge:
                 )
                 window = _main_window()
                 if window is not None:
-                    window.destroy()
+                    try:
+                        window.destroy()
+                    except Exception:
+                        pass
+                _schedule_process_exit()
                 return {"ok": True}
             except OSError as exc:
                 launch_errors.append(str(exc))
